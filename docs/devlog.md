@@ -17,6 +17,29 @@ Entry template:
 
 ---
 
+## 2026-08-19 — First design session: GDD draft  (branch: design/initial-gdd)
+
+**Did:** Ran the design questionnaire with the user and filled in
+[design-questionnaire.md](design-questionnaire.md), then wrote the first draft of
+[game-design.md](game-design.md) from those answers.
+
+**Why:** Lock the concept and an MVP before writing code. Seeker is a 2D top-down
+space journey: command an upgradable ship, manage minerals/energy/tech-fragments,
+survey and jump between nodes, and upgrade to face bigger threats on the way
+"home" (the ship's origin). Tone: lonely/contemplative with tense survival beats.
+Persistent progression; optional combat. MVP = travel between nodes, hit an
+event, collect, and buy one capability-changing upgrade.
+
+**Learned:** Core pillar is resource management → upgrades (which cost resources
+and raise energy use). Several unknowns remain: travel model (node-jump vs.
+free-flight blend), encounter resolution (real-time vs. paused), energy model and
+failure states, enemy/event roster.
+
+**Follow-ups:** Resolve the open questions in the GDD; then scaffold the first
+gameplay feature (candidate: node star-map + jump). Art/audio stay placeholder.
+
+---
+
 ## 2026-06-17 — Reusable template + assets/VCS setup  (branch: main)
 
 **Did:** Added a [README.md](../README.md) framing the repo as a reusable
