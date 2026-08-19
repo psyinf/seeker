@@ -278,6 +278,9 @@ maintenance and merge-conflict magnet.
 ## Testing & debugging (to formalize)
 
 - Quick check: headless run (above) to catch load errors.
+- For isolating a bug, follow the
+  [local debugging loop](workflow.md#local-debugging-loop-quick-change-workflow)
+  in the workflow doc — and remember to strip temporary debug scaffolding.
 - Consider [GUT](https://github.com/bitwes/Gut) or
   [GdUnit4](https://github.com/MikeSchulze/gdUnit4) for unit tests once the
   codebase warrants it.

@@ -17,7 +17,27 @@ Entry template:
 
 ---
 
-## 2026-08-19 — First design session: GDD draft  (branch: design/initial-gdd)
+## 2026-08-19 — Development workflow doc  (branch: docs/workflow)
+
+**Did:** Added [workflow.md](workflow.md) — branch naming, Conventional Commits +
+SemVer bump mapping, PR hygiene (`gh`, temp-file bodies, `| cat`), CI-failure
+triage, and a local quick-change debugging loop. Wired it into
+[AGENTS.md](../AGENTS.md) (doc map + "prepare, don't push") and cross-linked the
+debugging loop from [guidelines.md](guidelines.md).
+
+**Why:** Extracted the genuinely reusable, tool-agnostic ideas from an internal
+plugin marketplace (`Hillrom-Enterprise/surgical-skills`) without taking a
+dependency on it — the doc is self-contained repo text. Deliberately dropped the
+Jira/Atlassian/Baxter-specific parts, which don't apply to this project.
+
+**Learned:** The reusable core of that "workflow" skill is Conventional Commits,
+SemVer, PR/CI hygiene, and the debug loop; everything Jira was org-specific.
+Keeping it as plain docs (not a plugin) means zero external dependency.
+
+**Follow-ups:** Kept in sync with the godot-project-template copy; revisit if we
+adopt a test framework or actually set up CI.
+
+---
 
 **Did:** Ran the design questionnaire with the user and filled in
 [design-questionnaire.md](design-questionnaire.md), then wrote the first draft of

@@ -12,6 +12,7 @@ script the editor (see [docs/guidelines.md](docs/guidelines.md#running-godot)).
 | Topic | File | Use it for |
 |-------|------|-----------|
 | Godot conventions & best practices | [docs/guidelines.md](docs/guidelines.md) | How we write GDScript, structure scenes, name things |
+| Development workflow | [docs/workflow.md](docs/workflow.md) | Branches, commits, PRs, CI, and the local debugging loop |
 | Game design / concept | [docs/game-design.md](docs/game-design.md) | What the game *is* (filled in later) |
 | Architecture | [docs/architecture.md](docs/architecture.md) | How the project is wired together |
 | Devlog & learnings | [docs/devlog.md](docs/devlog.md) | Decisions made, things learned, gotchas hit |
@@ -20,7 +21,11 @@ script the editor (see [docs/guidelines.md](docs/guidelines.md#running-godot)).
 
 - **Feature branches.** Never commit directly to `main`. Create a branch per
   feature/fix (e.g. `feat/player-movement`, `fix/save-load`). Do not push or
-  force-push without the user's say-so.
+  force-push without the user's say-so. See
+  [docs/workflow.md](docs/workflow.md) for branch/commit/PR conventions.
+- **Prepare, don't push.** Report changed files, verification result, and a
+  *suggested* commit message; only stage/commit/push/open a PR when explicitly
+  asked — see [docs/workflow.md](docs/workflow.md#core-behavior-for-humans-and-ai-agents).
 - **Document as you go.** When you finish a meaningful change, update the
   relevant doc in the same branch:
   - new/changed structure → [docs/architecture.md](docs/architecture.md)
