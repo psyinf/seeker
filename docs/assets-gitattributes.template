@@ -1,0 +1,52 @@
+# Git LFS attributes for the Seeker assets repo.
+#
+# This file belongs in the ROOT of the dedicated assets repository (the one
+# mounted as the `assets/` submodule), NOT the main code repo.
+#
+# Setup in the assets repo:
+#   git lfs install
+#   # copy this file to the repo root as `.gitattributes`
+#   git add .gitattributes && git commit -m "chore: track binaries with LFS"
+#
+# Verify what LFS is tracking:  git lfs track
+# List LFS-managed files:       git lfs ls-files
+
+# --- Images ---
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.jpeg  filter=lfs diff=lfs merge=lfs -text
+*.gif   filter=lfs diff=lfs merge=lfs -text
+*.bmp   filter=lfs diff=lfs merge=lfs -text
+*.tga   filter=lfs diff=lfs merge=lfs -text
+*.psd   filter=lfs diff=lfs merge=lfs -text
+*.exr   filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
+*.webp  filter=lfs diff=lfs merge=lfs -text
+*.svg   filter=lfs diff=lfs merge=lfs -text
+
+# --- Audio ---
+*.wav   filter=lfs diff=lfs merge=lfs -text
+*.ogg   filter=lfs diff=lfs merge=lfs -text
+*.mp3   filter=lfs diff=lfs merge=lfs -text
+*.flac  filter=lfs diff=lfs merge=lfs -text
+
+# --- 3D models ---
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+
+# --- Fonts ---
+*.ttf   filter=lfs diff=lfs merge=lfs -text
+*.otf   filter=lfs diff=lfs merge=lfs -text
+*.woff  filter=lfs diff=lfs merge=lfs -text
+*.woff2 filter=lfs diff=lfs merge=lfs -text
+
+# --- Video ---
+*.ogv   filter=lfs diff=lfs merge=lfs -text
+*.webm  filter=lfs diff=lfs merge=lfs -text
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+
+# --- Archives / misc large binaries ---
+*.zip   filter=lfs diff=lfs merge=lfs -text
