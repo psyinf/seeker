@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/modes/strategic_map/strategic_map.gd" id="1_sm"]
+
+[node name="StrategicMap" type="Node2D"]
+script = ExtResource("1_sm")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="Placeholder" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="Placeholder"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "STRATEGIC MAP (placeholder)
+Tab to return to tactical combat"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -289,6 +289,34 @@ maintenance and merge-conflict magnet.
 
 ---
 
+## Engine gotchas & patterns (hard-won)
+
+Lessons we hit in practice — check these first when something behaves oddly.
+
+- **Cross-scene node references: export a `NodePath`, resolve in `_ready`.**
+  Hand-authored `.tscn` node-object exports (`@export var ship: Ship` set via
+  `NodePath("...")` in text) did **not** bind — they resolved to `null`. Use:
+  ```gdscript
+  @export var ship_path: NodePath
+  @onready var ship := get_node_or_null(ship_path) as Ship
+  ```
+- **Global class cache must exist for cross-file `class_name` types.** Editing
+  scripts outside the editor can leave `.godot/global_script_class_cache.cfg`
+  missing/stale, so a reference like `@export var ship: Ship` fails to parse
+  ("Could not find type Ship") and the main scene never instantiates — the window
+  hangs on the boot splash. Regenerate by opening the editor once, or headless:
+  `Godot --path . --editor --headless --quit`. Don't rely on the cache for pure
+  headless runs on a fresh clone.
+- **Production visuals as scene nodes / shaders, not `_draw`.** Prefer `Line2D`,
+  `Polygon2D`, `Sprite2D`, or a `ShaderMaterial` over custom `_draw` for anything
+  shipping (e.g. arrows = `Line2D` + `Polygon2D`; grids = a `canvas_item` shader
+  on a `ColorRect`). `_draw` is fine for throwaway/debug only.
+- **Seeing what actually renders (debug):** save the framebuffer to inspect it —
+  `get_viewport().get_texture().get_image().save_png("res://_debug_shot.png")` on
+  a chosen frame, then delete the PNG and the debug code afterwards.
+
+---
+
 ## Open conventions (decide as we go)
 
 - [ ] Confirm exact Godot version (`project.godot` → `config/features`).

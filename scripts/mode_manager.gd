@@ -26,6 +26,12 @@ func _ready() -> void:
 	switch_to(initial_mode)
 
 
+## Toggles between tactical combat and the strategic map (placeholder wiring).
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_mode"):
+		switch_to(Mode.TACTICAL_COMBAT if current_mode == Mode.STRATEGIC_MAP else Mode.STRATEGIC_MAP)
+
+
 func switch_to(mode: Mode) -> void:
 	var scene := _scene_for(mode)
 	if scene == null:

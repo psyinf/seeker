@@ -13,6 +13,7 @@ script the editor (see [docs/guidelines.md](docs/guidelines.md#running-godot)).
 |-------|------|-----------|
 | Godot conventions & best practices | [docs/guidelines.md](docs/guidelines.md) | How we write GDScript, structure scenes, name things |
 | Development workflow | [docs/workflow.md](docs/workflow.md) | Branches, commits, PRs, CI, and the local debugging loop |
+| Current feature plan | [docs/current_feature_plan.md](docs/current_feature_plan.md) | What we're building right now, the plan, and increments |
 | Game design / concept | [docs/game-design.md](docs/game-design.md) | What the game *is* (filled in later) |
 | Architecture | [docs/architecture.md](docs/architecture.md) | How the project is wired together |
 | Devlog & learnings | [docs/devlog.md](docs/devlog.md) | Decisions made, things learned, gotchas hit |
