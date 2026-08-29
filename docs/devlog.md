@@ -17,6 +17,40 @@ Entry template:
 
 ---
 
+## 2026-08-29 — Mouse-aimed free flight + heading indicators  (branch: feat/ship-topdown-view)
+
+**Did:** Added Newtonian free flight to `Ship`: hold **left mouse** to aim at the
+cursor and thrust (`thrust` action = LMB / Space / W), with `thrust_accel`,
+`max_speed`, and `damping` tunables; exposes `velocity` and `aim_direction`.
+Added a `FlightIndicators` scene showing two `VectorArrow`s — amber aim (desired
+heading) and green velocity (prograde). Built `VectorArrow` from `Line2D` +
+`Polygon2D` (no `_draw`). Added a `Camera2D` follow (in `main.gd`) and a
+world-fixed reference grid rendered by a `canvas_item` shader on a full-screen
+`ColorRect` (`SpaceGrid`, `CanvasLayer` layer -1).
+
+**Why:** Movement is the prerequisite for the rest of the loop and answers the
+GDD's open "travel model" question toward free-flight. Mouse-only aiming lets the
+ship coast on a heading. Indicators/grid make the drift readable.
+
+**Learned (important gotchas):**
+- **Global class cache:** editing files outside the editor left
+  `.godot/global_script_class_cache.cfg` missing, so `@export var ship: Ship`
+  failed to parse ("Could not find type Ship") and the main scene never
+  instantiated — the window sat on the boot splash. Fix: regenerate the cache
+  (`Godot --path . --editor --headless --quit`); don't rely on it for headless.
+- **Node exports from hand-written `.tscn` didn't bind** (all resolved to null).
+  Switched to `@export var *_path: NodePath` + `get_node_or_null` in `_ready` —
+  reliable.
+- Not a renderer problem (chased Forward+/Vulkan first — the machine also has a
+  broken Vulkan SDK layer install spamming loader errors, but that was a red
+  herring). Verified by screenshotting `get_viewport().get_texture()`.
+
+**Follow-ups:** Resolve remaining GDD questions (energy model, encounters). Grid
+shader assumes camera zoom 1. Introduce `EventBus`/`GameState` with the first
+stateful system (scanning/nodes).
+
+---
+
 ## 2026-08-19 — First gameplay scaffold: top-down ship view  (branch: feat/ship-topdown-view)
 
 **Did:** Scaffolded the Godot 4.6 project (`project.godot`, `icon.svg`) with a

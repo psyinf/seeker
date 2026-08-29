@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/main/vector_arrow.gd" id="1_va"]
+
+[node name="VectorArrow" type="Node2D"]
+script = ExtResource("1_va")
+
+[node name="Shaft" type="Line2D" parent="."]
+width = 2.0
+points = PackedVector2Array(0, 0, 70, 0)
+
+[node name="Head" type="Polygon2D" parent="."]
+position = Vector2(70, 0)
+polygon = PackedVector2Array(0, 0, -12, -6, -12, 6)

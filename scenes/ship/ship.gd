@@ -45,6 +45,35 @@ extends Node2D
 		outline_width = value
 		queue_redraw()
 
+@export_group("Flight")
+## Thrust acceleration while the thrust input is held, in pixels/second².
+@export var thrust_accel: float = 900.0
+## Speed cap, in pixels/second.
+@export var max_speed: float = 600.0
+## Linear velocity damping per second (0 = pure Newtonian drift, higher = tighter).
+@export_range(0.0, 5.0, 0.05) var damping: float = 0.6
+
+## Current world-space velocity, in pixels/second. Read by the flight indicators.
+var velocity: Vector2 = Vector2.ZERO
+## Unit vector the nose points toward (the desired heading). Read by the indicators.
+var aim_direction: Vector2 = Vector2.UP
+
+
+func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		var to_mouse := get_global_mouse_position() - global_position
+		if to_mouse.length() > 0.001:
+			aim_direction = to_mouse.normalized()
+	rotation = aim_direction.angle() + PI / 2.0 # nose (-Y) faces the aim
+	if Input.is_action_pressed("thrust"):
+		velocity += aim_direction * thrust_accel * delta
+	if damping > 0.0:
+		velocity *= maxf(0.0, 1.0 - damping * delta)
+	velocity = velocity.limit_length(max_speed)
+	position += velocity * delta
+
 
 func _draw() -> void:
 	var hull := _hull_points()

@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/main/flight_indicators.gd" id="1_fi"]
+[ext_resource type="PackedScene" path="res://scenes/main/vector_arrow.tscn" id="2_va"]
+
+[node name="FlightIndicators" type="Node2D"]
+script = ExtResource("1_fi")
+
+[node name="AimArrow" parent="." instance=ExtResource("2_va")]
+color = Color(1, 0.780392, 0.278431, 1)
+
+[node name="VelocityArrow" parent="." instance=ExtResource("2_va")]
+color = Color(0.419608, 1, 0.548039, 1)
