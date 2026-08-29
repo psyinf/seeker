@@ -64,6 +64,20 @@ challenging parts of the journey. Everything below supports it.
 
 - **Real-time / turn-based:** real-time moment-to-moment (to confirm).
 
+### 4.1 Game modes
+
+The game is played across three distinct modes; the player moves between them.
+
+| Mode | Scale | What you do | Status |
+|------|-------|-------------|--------|
+| **Tactical combat** | A single encounter/locale | Real-time, mouse-aimed Newtonian free flight: dodge, fight, collect, react to events | **Prototyped** |
+| **Strategic map** | One star system | Zoomed-out travel between surveyed nodes within the current system | Planned |
+| **System jump** | Between systems | Commit energy/resources to jump to the next star system | Planned |
+
+Tactical combat is real-time; the strategic map and jump are the slower,
+deliberate layers. How control passes between them (and whether the map pauses
+combat) is still open.
+
 ## 5. World & setting
 
 - **Setting:** deep space, an unknown journey. Tone: lonely / contemplative with
@@ -127,7 +141,9 @@ challenging parts of the journey. Everything below supports it.
 
 ## 12. Open questions
 
-- Travel model: how do local free-flight and node-jumping combine?
+- Travel model: how do local free-flight and node-jumping combine? — *partly
+  settled: three modes (tactical combat / strategic map / system jump), see 4.1.
+  Remaining: how control passes between them and whether the map pauses combat.*
 - Encounter resolution: real-time vs. paused/tactical for combat and events?
 - Enemy / event roster and how many distinct types for the MVP.
 - Energy model: generation vs. consumption, and failure states.

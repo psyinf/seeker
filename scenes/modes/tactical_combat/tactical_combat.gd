@@ -1,7 +1,8 @@
-class_name Main
+class_name TacticalCombat
 extends Node2D
-## Level root: keeps the camera centered on the ship. The reference grid and
-## flight indicators are self-contained child scenes.
+## Real-time tactical combat mode: mouse-aimed Newtonian free flight. Keeps the
+## camera centered on the ship; the reference grid and flight indicators are
+## self-contained child scenes.
 
 ## The ship the camera follows.
 @export var ship_path: NodePath

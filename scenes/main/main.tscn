@@ -1,21 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/ship/ship.tscn" id="1_ship"]
-[ext_resource type="Script" path="res://scenes/main/main.gd" id="2_main"]
-[ext_resource type="PackedScene" path="res://scenes/main/flight_indicators.tscn" id="3_indic"]
-[ext_resource type="PackedScene" path="res://scenes/main/space_grid.tscn" id="4_grid"]
+[ext_resource type="Script" path="res://scripts/mode_manager.gd" id="1_mm"]
+[ext_resource type="PackedScene" path="res://scenes/modes/tactical_combat/tactical_combat.tscn" id="2_tc"]
 
 [node name="Main" type="Node2D"]
-script = ExtResource("2_main")
-ship_path = NodePath("Ship")
-camera_path = NodePath("Camera2D")
 
-[node name="SpaceGrid" parent="." instance=ExtResource("4_grid")]
-camera_path = NodePath("../Camera2D")
-
-[node name="Camera2D" type="Camera2D" parent="."]
-
-[node name="Ship" parent="." instance=ExtResource("1_ship")]
-
-[node name="FlightIndicators" parent="." instance=ExtResource("3_indic")]
-ship_path = NodePath("../Ship")
+[node name="ModeManager" type="Node" parent="."]
+script = ExtResource("1_mm")
+tactical_combat_scene = ExtResource("2_tc")

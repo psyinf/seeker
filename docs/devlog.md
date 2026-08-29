@@ -17,6 +17,33 @@ Entry template:
 
 ---
 
+## 2026-08-29 — Mode system; free flight becomes tactical combat  (branch: feat/ship-topdown-view)
+
+**Did:** Introduced a lightweight `ModeManager` (`scripts/mode_manager.gd`) with a
+`Mode` enum (`TACTICAL_COMBAT`, `STRATEGIC_MAP`, `SYSTEM_JUMP`), a `PackedScene`
+per mode, `switch_to(mode)`, and a `mode_changed` signal. Moved the free-flight
+gameplay into a self-contained `TacticalCombat` mode scene
+(`scenes/modes/tactical_combat/`); `main.tscn` is now just a `Main` root + the
+manager, and the old `main.gd` was removed (camera-follow moved into the mode).
+Defined the three modes in the GDD (§4.1).
+
+**Why:** The player asked to reframe the current movement as the **tactical
+combat** mode — the real-time layer — distinct from a **strategic map** (travel
+within a system) and a **system jump** (between systems). Scaffolding the manager
+now keeps each mode a swappable, self-contained scene and answers part of the
+GDD's travel-model question.
+
+**Learned:** Mode scenes swap cleanly by instancing under a plain `Node` manager;
+Node2D modes render fine beneath it. Only `tactical_combat_scene` is assigned;
+the other two `PackedScene` slots are intentionally empty placeholders.
+
+**Follow-ups:** Build the strategic map (in-system node travel) and system-jump
+modes; decide how control passes between modes (and whether the map pauses
+combat). Shared state (current system, ship status) will want a `GameState`
+autoload once a second mode exists.
+
+---
+
 ## 2026-08-29 — Mouse-aimed free flight + heading indicators  (branch: feat/ship-topdown-view)
 
 **Did:** Added Newtonian free flight to `Ship`: hold **left mouse** to aim at the

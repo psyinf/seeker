@@ -6,19 +6,21 @@
 ## Overview
 
 Early scaffold. The Godot project (`project.godot`, Godot 4.6, Forward+) boots a
-single top-level scene: the player ship flying in a top-down view with mouse-aimed
-Newtonian free flight, heading/velocity indicators, a camera that follows the
-ship, and a shader-drawn reference grid. Systems are self-contained scenes wired
-by node references (and, later, signals) as the game grows.
+single top-level scene whose only job is to host a **`ModeManager`**. The manager
+swaps between self-contained **game modes**; the first and only built mode is
+**tactical combat** (real-time, mouse-aimed Newtonian free flight with
+heading/velocity indicators, a following camera, and a shader reference grid).
+Strategic-map and system-jump modes are scaffolded but not yet built. Systems are
+self-contained scenes wired by node references (and, later, signals).
 
 ## Scene tree & entry point
 
 - **Main scene:** `res://scenes/main/main.tscn` (set in `project.godot` →
-  `run/main_scene`).
-- `Main` (`Node2D`, `main.gd`) owns a `Camera2D`, the self-contained `Ship`
-  scene, a `FlightIndicators` scene, and a `SpaceGrid` scene. `Main` only keeps
-  the camera centered on the ship each frame. This is the current entry point;
-  scene swapping is not needed yet.
+  `run/main_scene`). It holds a `Main` root and a `ModeManager` child; the
+  manager instances the active mode scene as its own child.
+- **Tactical combat mode** (`res://scenes/modes/tactical_combat/`): a
+  `TacticalCombat` (`Node2D`) owning a `Camera2D`, the `Ship`, `FlightIndicators`
+  and `SpaceGrid` scenes. It only keeps the camera centered on the ship.
 
 ## Autoloads (singletons)
 
@@ -30,6 +32,13 @@ by node references (and, later, signals) as the game grows.
 
 _One subsection per system (input, player, combat, save/load, UI, audio, ...).
 For each: what it does, key scenes/scripts, and how it talks to other systems._
+
+### Modes
+- Script: `res://scripts/mode_manager.gd` (`class_name ModeManager`).
+- Holds a `Mode` enum (`TACTICAL_COMBAT`, `STRATEGIC_MAP`, `SYSTEM_JUMP`) and a
+  `PackedScene` per mode (`@export`). `switch_to(mode)` frees the current mode
+  node and instances the new one as its child, then emits `mode_changed`.
+- Only `tactical_combat_scene` is assigned today; the others are placeholders.
 
 ### Ship (player)
 - Scenes/scripts: `res://scenes/ship/ship.tscn` + `res://scenes/ship/ship.gd`
