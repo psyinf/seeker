@@ -27,10 +27,10 @@ func _process(_delta: float) -> void:
 	if ship == null:
 		return
 	global_position = ship.global_position
-	_aim.rotation = ship.aim_direction.angle()
+	_aim.global_rotation = ship.aim_direction.angle()
 	_aim.length = aim_length
 	var speed := ship.velocity.length()
 	_velocity.visible = speed >= velocity_min_speed
 	if _velocity.visible:
-		_velocity.rotation = ship.velocity.angle()
+		_velocity.global_rotation = ship.velocity.angle()
 		_velocity.length = minf(speed * velocity_scale, velocity_max_length)
