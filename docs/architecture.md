@@ -49,6 +49,23 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   longer tip is the nose, and inherits the ship's rotation. **Forward is -Y**
   (nose points up). Keeping the hull out of `ship.gd` keeps drawing and flight
   logic decoupled (no god class).
+- **Propulsion FX is a separate component:** `res://scenes/ship/ship_thrusters.gd`
+  (`class_name ShipThrusters`, `@tool`), a child `Node2D` placed **before** the
+  hull in the tree so plumes render behind it. Each frame it reads `Ship`'s
+  thruster state and `_draw`s only the nozzles that are firing. It never drives
+  the flight logic.
+- **Propulsion is data-driven** via serializable resources so a ship's engine
+  layout can be authored in the inspector and saved/loaded as a `.tres`:
+  - `res://scenes/ship/thruster_nozzle.gd` (`class_name ThrusterNozzle extends
+    Resource`) — one mount: `position`, expel `direction`, plume `length`/`width`,
+    `inner_color`/`outer_color`, and a `channels` flag set (`MAIN`, `ROTATION`,
+    `TRANSLATION`) picking which commands fire it.
+  - `res://scenes/ship/propulsion_config.gd` (`class_name PropulsionConfig extends
+    Resource`) — an `Array[ThrusterNozzle]`, plus `create_default()` for the stock
+    single-engine + RCS layout used when `ShipThrusters.config` is unset.
+  - Firing per nozzle: `MAIN` adds `main_throttle`; `ROTATION` fires when the
+    nozzle's `cross(pos, -dir)` sign matches `rcs_torque` (couples form
+    automatically); `TRANSLATION` fires when `(-dir) · rcs_translation > 0`.
 - **Physical flight:** movement is pure Newtonian — no drag/damping, so momentum
   is never bled off automatically. `_apply_turning` builds/sheds `angular_velocity`
   under a `turn_torque / mass` limit and brakes early to arrive on the aim without
@@ -74,8 +91,9 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - Tunables (`@export`): Flight — `mass`, `thrust_force`, `max_speed`,
   `hold_thrust_delay`; Turning — `turn_torque`, `max_turn_speed`,
   `angular_damping`. Hull dimensions/colors live on the `ShipHull` scene.
-- Public: state `velocity`, `aim_direction`, `angular_velocity`; method
-  `full_stop()`; signal `context_menu_requested`.
+- Public: state `velocity`, `aim_direction`, `angular_velocity`; per-frame
+  thruster state `main_throttle`, `rcs_torque`, `rcs_translation` (read by
+  `ShipThrusters`); method `full_stop()`; signal `context_menu_requested`.
 - Inputs: **LMB** click / hold / double-click (see above). Signals:
   `context_menu_requested`.
 

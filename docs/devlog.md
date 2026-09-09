@@ -17,6 +17,59 @@ Entry template:
 
 ---
 
+## 2026-09-09 — Data-driven propulsion + RCS settle fix  (branch: feat/ship-topdown-view)
+
+**Did:** Moved the thruster nozzle layout out of `ship_thrusters.gd` hard-coded
+arrays into serializable resources: `ThrusterNozzle` (`Resource`: position,
+expel direction, plume size/colors, a `channels` flag set of MAIN/ROTATION/
+TRANSLATION) and `PropulsionConfig` (`Resource`: `Array[ThrusterNozzle]` +
+`create_default()`). `ShipThrusters` now takes an `@export var config:
+PropulsionConfig`, falling back to the default when unset, and derives each
+nozzle's firing generically from its channels. Also fixed the RCS jets looking
+"always on": the turn controller now snaps to the aim and zeroes spin once within
+`SETTLE_ANGLE`/`SETTLE_SPEED`, so `rcs_torque` drops to 0 at rest instead of
+chattering.
+**Why:** The nozzle set should be authorable data that can be saved/loaded (ship
+loadouts, save games), not baked into the FX script — the FX is just a renderer
+of a `PropulsionConfig`. The settle deadzone removes a limit-cycle where the
+controller kept issuing full-strength micro-corrections near the target.
+**Learned:** A typed `Array[ThrusterNozzle]` export is inspector-editable and
+serializes cleanly to `.tres`; `@export_flags("Main","Rotation","Translation")`
+lines up bit values 1/2/4 with the `Channel` enum, so one nozzle can answer
+several command channels (e.g. the main engine is just a nozzle with the MAIN
+flag). Default positions are now absolute px (matching the stock hull) rather
+than hull-relative, which is the right trade for serializable data.
+**Follow-ups:** Could ship an actual `default_propulsion.tres` and per-hull
+configs; still no rear-firing RCS for pure backward-drift braking.
+
+---
+
+## 2026-09-09 — Thruster FX: main engine + control thrusters  (branch: feat/ship-topdown-view)
+
+**Did:** Added `ship_thrusters.gd` (`class_name ShipThrusters`, `@tool`), a
+child `Node2D` in `ship.tscn` placed before `ShipHull` so plumes draw behind the
+ship. It reads new per-frame state on `Ship` — `main_throttle` (forward thrust),
+`rcs_torque` (signed rotation command), `rcs_translation` (local retro-burn dir)
+— and `_draw`s a main-engine plume off the tail plus a set of control-thruster
+(RCS) jets. `ship.gd` now sets that state where it already computes thrust,
+turning, and braking (no new physics).
+**Why:** The user asked for visible thrusting/rotation via a main engine and
+control thrusters. Deriving the visuals from existing state keeps the FX a pure,
+decoupled reader (guidelines: one responsibility, communicate via read-only
+state, no god class).
+**Learned:** RCS nozzle firing is derived generically: for each nozzle the
+reaction force is `-expel_dir`; it fires when its `cross(pos, force)` sign
+matches the commanded torque, or when `force · rcs_translation > 0`. This makes
+the four lateral nozzles form correct rotation couples automatically, and the
+nose nozzle brakes forward drift — no hand-picked per-direction cases. RCS only
+fires while *changing* angular velocity (the clamped `step`), so a coasting turn
+shows no jets, which reads as correct Newtonian behavior.
+**Follow-ups:** No rear-firing RCS, so braking pure backward drift has no jet
+(rare); main engine covers forward. Could add smoke/particles or a throttle ramp
+later.
+
+---
+
 ## 2026-09-09 — Ship visual split into its own ShipHull scene  (branch: feat/ship-topdown-view)
 
 **Did:** Extracted the ship's hull drawing out of `ship.gd` into a standalone

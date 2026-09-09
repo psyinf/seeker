@@ -38,8 +38,22 @@ var aim_direction: Vector2 = Vector2.UP
 ## Current angular velocity, in radians/second (turning momentum).
 var angular_velocity: float = 0.0
 
+## Main engine throttle this frame, 0..1 (forward thrust). Read by the thruster FX.
+var main_throttle: float = 0.0
+## Signed RCS rotation command this frame, -1..1 (which way the control thrusters
+## torque the hull). Read by the thruster FX.
+var rcs_torque: float = 0.0
+## RCS translation command this frame in local space (the retro-burn during a
+## Full Stop), each axis -1..1. Read by the thruster FX.
+var rcs_translation: Vector2 = Vector2.ZERO
+
 ## Max gap between two clicks to count as a double-click, in milliseconds.
 const DOUBLE_CLICK_WINDOW_MS := 250
+
+## Below this heading error (radians) the ship is treated as aligned (~0.6°).
+const SETTLE_ANGLE := 0.01
+## Below this angular speed (rad/s) a nearly-aligned ship snaps to rest.
+const SETTLE_SPEED := 0.05
 
 ## True while the left mouse button is held (rotate; thrust past hold_thrust_delay).
 var _lmb_held: bool = false
@@ -101,9 +115,12 @@ func _physics_process(delta: float) -> void:
 				aim_direction = to_mouse.normalized()
 			_braking = false # manual input cancels a Full Stop
 	_apply_turning(delta)
+	main_throttle = 0.0
+	rcs_translation = Vector2.ZERO
 	if _lmb_held and _hold_time >= hold_thrust_delay:
 		var heading := Vector2.UP.rotated(rotation)
 		velocity += heading * (thrust_force / mass) * delta
+		main_throttle = 1.0
 	elif _braking:
 		_apply_braking(delta)
 	velocity = velocity.limit_length(max_speed)
@@ -119,6 +136,9 @@ func full_stop() -> void:
 func _apply_braking(delta: float) -> void:
 	var speed := velocity.length()
 	var delta_v := (thrust_force / mass) * delta
+	# Control thrusters fire opposite the motion, so expel gas along +velocity.
+	if speed > 0.001:
+		rcs_translation = (-velocity / speed).rotated(-rotation)
 	if speed <= delta_v:
 		velocity = Vector2.ZERO
 		_braking = false
@@ -133,11 +153,21 @@ func _apply_turning(delta: float) -> void:
 	var angular_accel := turn_torque / mass
 	var target_rotation := aim_direction.angle() + PI / 2.0 # nose (-Y) faces the aim
 	var error := wrapf(target_rotation - rotation, -PI, PI)
+	# Once aligned and nearly stopped, snap and go idle so the control thrusters
+	# don't chatter with endless micro-corrections.
+	if absf(error) < SETTLE_ANGLE and absf(angular_velocity) < SETTLE_SPEED:
+		rotation = target_rotation
+		angular_velocity = 0.0
+		rcs_torque = 0.0
+		return
 	# Fastest spin we can still decelerate from before reaching the target.
 	var brake_speed := sqrt(2.0 * angular_accel * absf(error))
 	var desired_velocity := signf(error) * minf(max_turn_speed, brake_speed)
 	var max_step := angular_accel * delta
-	angular_velocity += clampf(desired_velocity - angular_velocity, -max_step, max_step)
+	var step := clampf(desired_velocity - angular_velocity, -max_step, max_step)
+	angular_velocity += step
+	# Control thrusters only fire while changing angular velocity, not while coasting.
+	rcs_torque = step / max_step if max_step > 0.0 else 0.0
 	if angular_damping > 0.0:
 		angular_velocity *= maxf(0.0, 1.0 - angular_damping * delta)
 	rotation += angular_velocity * delta
