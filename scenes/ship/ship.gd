@@ -9,6 +9,10 @@ extends Node2D
 ## Requested when the player double-clicks; the mode opens a context menu.
 signal context_menu_requested
 
+## Relayed from the ship's turrets when they fire; the mode adds the bolt to the
+## world so it keeps its own momentum instead of moving with the ship.
+signal projectile_fired(projectile: Node2D)
+
 @export_group("Flight")
 ## Ship mass. Force is divided by mass for both thrust and turning, so heavier
 ## ships need proportionally more thrust/torque for the same responsiveness —
@@ -69,11 +73,34 @@ var _last_click_msec: int = -100000
 ## True while executing a Full Stop order (retro-burn until at rest).
 var _braking: bool = false
 
+## The turrets mounted on this ship; RMB fires them all.
+var _turrets: Array[ShipTurret] = []
+## Optional fire-control computer; relays the selected module and platform data.
+var _fire_control: FireControl = null
+
+
+func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
+	for child in get_children():
+		if child is ShipTurret:
+			_turrets.append(child)
+			child.projectile_fired.connect(_on_turret_projectile_fired)
+		elif child is FireControl:
+			_fire_control = child
+	if _fire_control != null:
+		_fire_control.setup(self, _turrets)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
-	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton):
+		return
+	if event.button_index == MOUSE_BUTTON_RIGHT:
+		_set_firing(event.pressed)
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
 		_lmb_held = true
@@ -125,11 +152,31 @@ func _physics_process(delta: float) -> void:
 		_apply_braking(delta)
 	velocity = velocity.limit_length(max_speed)
 	position += velocity * delta
+	# Turrets inherit the hull's momentum so bolts fly Newtonian.
+	for turret in _turrets:
+		turret.base_velocity = velocity
 
 
 ## Begins a Full Stop: a retro-burn that kills velocity using the ship's thrust.
 func full_stop() -> void:
 	_braking = true
+
+
+## Selects the active fire-control module (FireControl.Mode int) from the HUD.
+func set_fire_control_mode(mode: int) -> void:
+	if _fire_control != null:
+		_fire_control.mode = mode
+
+
+## Toggles the fire command on every mounted turret (each gates its own rate).
+func _set_firing(active: bool) -> void:
+	for turret in _turrets:
+		turret.firing = active
+
+
+## Relays a turret's bolt so the mode can place it in the world.
+func _on_turret_projectile_fired(projectile: Node2D) -> void:
+	projectile_fired.emit(projectile)
 
 
 ## Retro-burn opposite the current velocity, capped so it settles exactly at rest.

@@ -23,6 +23,15 @@ func _ready() -> void:
 	if ship != null and context_menu != null:
 		ship.context_menu_requested.connect(context_menu.open_at_mouse)
 		context_menu.full_stop_requested.connect(ship.full_stop)
+	if ship != null and command_bar != null:
+		command_bar.fire_control_mode_changed.connect(ship.set_fire_control_mode)
+	if ship != null:
+		ship.projectile_fired.connect(_on_ship_projectile_fired)
+
+
+## Places a turret bolt in the world so it flies free of the ship's transform.
+func _on_ship_projectile_fired(projectile: Node2D) -> void:
+	add_child(projectile)
 
 
 func _process(_delta: float) -> void:

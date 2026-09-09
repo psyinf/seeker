@@ -91,11 +91,29 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - Tunables (`@export`): Flight — `mass`, `thrust_force`, `max_speed`,
   `hold_thrust_delay`; Turning — `turn_torque`, `max_turn_speed`,
   `angular_damping`. Hull dimensions/colors live on the `ShipHull` scene.
+- **Turrets are separate components:** `res://scenes/ship/ship_turret.gd`
+  (`class_name ShipTurret`, `@tool`), instanced as child(ren) of `Ship` and
+  drawn **on top** of the hull. Each turret aims **independently at the mouse**
+  in world space (barrel = local -Y), slews toward it at `slew_speed`, and gates
+  its own `fire_rate`. On fire it spawns its `projectile_scene` at the barrel
+  tip along its aim and emits `projectile_fired(projectile)`; it never adds the
+  bolt to the tree itself. Weapon params (`projectile_scene`, `fire_rate`,
+  `projectile_speed`) are per-turret exports, so different/multiple turrets are
+  just more `ShipTurret` nodes with different values — no code changes.
+- **Firing (RMB):** `Ship._ready` collects every `ShipTurret` child and connects
+  their `projectile_fired`. **RMB** (in `_unhandled_input`) toggles `firing` on
+  all turrets via `_set_firing`; the ship relays each turret's shot up through
+  its own `projectile_fired`. `TacticalCombat` adds the bolt to the **world**
+  node (not the ship) so it flies free of the ship's transform.
+- **Projectile:** `res://scenes/ship/projectile.tscn` + `projectile.gd`
+  (`class_name Projectile`) — a self-drawing bolt that travels at its `launch()`
+  velocity in a straight line and `queue_free`s after `lifetime`.
 - Public: state `velocity`, `aim_direction`, `angular_velocity`; per-frame
   thruster state `main_throttle`, `rcs_torque`, `rcs_translation` (read by
-  `ShipThrusters`); method `full_stop()`; signal `context_menu_requested`.
-- Inputs: **LMB** click / hold / double-click (see above). Signals:
-  `context_menu_requested`.
+  `ShipThrusters`); method `full_stop()`; signals `context_menu_requested`,
+  `projectile_fired`.
+- Inputs: **LMB** click / hold / double-click (flight, see above); **RMB** hold
+  = fire turrets. Signals: `context_menu_requested`, `projectile_fired`.
 
 ### Flight indicators
 - Scenes/scripts: `res://scenes/main/flight_indicators.tscn` +

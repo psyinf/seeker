@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/ship/ship_turret.gd" id="1_turret"]
+[ext_resource type="PackedScene" path="res://scenes/ship/projectile.tscn" id="2_proj"]
+
+[node name="ShipTurret" type="Node2D"]
+script = ExtResource("1_turret")
+projectile_scene = ExtResource("2_proj")

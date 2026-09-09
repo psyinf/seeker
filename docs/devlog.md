@@ -17,6 +17,32 @@ Entry template:
 
 ---
 
+## 2026-09-09 — Mouse-aimed turret + RMB firing  (branch: feat/ship-topdown-view)
+
+**Did:** Added `ship_turret.gd` (`class_name ShipTurret`, `@tool`), instanced on
+`Ship` above the hull. It aims independently at the mouse in world space, slews
+at `slew_speed`, and fires bolts at its own `fire_rate`. Firing is RMB: `Ship`
+collects its `ShipTurret` children in `_ready`, RMB in `_unhandled_input` toggles
+`firing` on all of them (`_set_firing`), and the ship relays each turret's
+`projectile_fired` up; `TacticalCombat` adds the bolt to the world node. New
+`Projectile` scene (`projectile.gd`) is a straight-line bolt that despawns after
+`lifetime`.
+**Why:** The user wants a turret that tracks the cursor and fires on RMB, and
+**multiple/different turrets later**. Making each turret own its aim + fire rate
+and emit a spawn signal means adding a turret is just instancing another
+`ShipTurret` node — no wiring changes (guidelines: one responsibility, decouple
+via signals).
+**Learned:** Because the turret is a child of the rotating `Ship`, aiming uses
+`global_rotation` (not local `rotation`) so it ignores the hull's heading; barrel
+forward is local -Y, so the aim angle needs a `+PI/2` offset. Spawning the bolt
+into the world (not under the ship) keeps its own momentum; the turret emits the
+node and lets the mode parent it, so the turret never needs a world reference.
+**Follow-ups:** Bolts have no collision/damage yet; no muzzle flash; ship
+velocity isn't inherited by bolts. A per-turret `.tres` weapon config (like
+`PropulsionConfig`) is the likely next step for different turret types.
+
+---
+
 ## 2026-09-09 — Data-driven propulsion + RCS settle fix  (branch: feat/ship-topdown-view)
 
 **Did:** Moved the thruster nozzle layout out of `ship_thrusters.gd` hard-coded
