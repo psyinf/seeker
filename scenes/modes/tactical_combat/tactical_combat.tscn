@@ -1,14 +1,18 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ship/ship.tscn" id="1_ship"]
 [ext_resource type="Script" path="res://scenes/modes/tactical_combat/tactical_combat.gd" id="2_tc"]
 [ext_resource type="PackedScene" path="res://scenes/main/flight_indicators.tscn" id="3_indic"]
 [ext_resource type="PackedScene" path="res://scenes/main/space_grid.tscn" id="4_grid"]
+[ext_resource type="PackedScene" path="res://scenes/ui/command_bar.tscn" id="5_cmd"]
+[ext_resource type="PackedScene" path="res://scenes/ui/context_menu.tscn" id="6_menu"]
 
 [node name="TacticalCombat" type="Node2D"]
 script = ExtResource("2_tc")
 ship_path = NodePath("Ship")
 camera_path = NodePath("Camera2D")
+command_bar_path = NodePath("CommandBar")
+context_menu_path = NodePath("ContextMenu")
 
 [node name="SpaceGrid" parent="." instance=ExtResource("4_grid")]
 camera_path = NodePath("../Camera2D")
@@ -19,3 +23,7 @@ camera_path = NodePath("../Camera2D")
 
 [node name="FlightIndicators" parent="." instance=ExtResource("3_indic")]
 ship_path = NodePath("../Ship")
+
+[node name="CommandBar" parent="." instance=ExtResource("5_cmd")]
+
+[node name="ContextMenu" parent="." instance=ExtResource("6_menu")]

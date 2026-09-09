@@ -45,14 +45,35 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   (`class_name Ship`, `@tool`).
 - Rendered via `_draw` as an elongated diamond (kite): the longer tip is the
   nose. **Forward is -Y** (nose points up).
-- **Free flight:** in `_physics_process`, while the **left mouse button** is held
-  the ship aims at the cursor (`aim_direction`) and rotates to face it. The
-  `thrust` input action accelerates along `aim_direction`; velocity integrates
-  with a `damping` factor and is capped at `max_speed` (Newtonian drift).
-- Tunables (`@export`): hull dimensions/colors, `thrust_accel`, `max_speed`,
-  `damping`.
-- Public state read by others: `velocity`, `aim_direction`.
-- Inputs: `thrust` (left mouse / Space / W). Signals: none yet.
+- **Physical flight:** movement is pure Newtonian — no drag/damping, so momentum
+  is never bled off automatically. `_apply_turning` builds/sheds `angular_velocity`
+  under a `turn_torque / mass` limit and brakes early to arrive on the aim without
+  oscillating (momentum turning). Thrust pushes along the ship's **actual nose**
+  (`Vector2.UP.rotated(rotation)`) with `thrust_force / mass`, so momentum only
+  points where you want once the ship has finished rotating; speed is capped at
+  `max_speed`.
+- **Controls (LMB), handled in `_unhandled_input`:**
+  - **Click** = turn toward the point only (no thrust). The turn is *deferred* by
+    `DOUBLE_CLICK_WINDOW_MS` (250 ms) so the first click of a double-click never
+    rotates the ship; a second click within the window cancels it.
+  - **Hold** = turn toward the cursor **and** thrust, once held past
+    `hold_thrust_delay` (so a click can't sneak in a thrust blip).
+  - **Double-click** = emit `context_menu_requested`; the mode opens a context
+    menu at the cursor.
+- **Full Stop:** `full_stop()` starts a physical retro-burn (`_apply_braking`)
+  that spends `thrust_force / mass` opposite `velocity` until it settles exactly
+  at rest; any manual input cancels it. This is the current "stop" order, issued
+  from the context menu.
+- **Mass model:** both thrust and turn are forces divided by `mass`, so
+  larger-mass ships need bigger `thrust_force`/`turn_torque` for the same
+  response — the hook for heavier ships carrying beefier engines.
+- Tunables (`@export`): hull dimensions/colors; Flight — `mass`, `thrust_force`,
+  `max_speed`, `hold_thrust_delay`; Turning — `turn_torque`, `max_turn_speed`,
+  `angular_damping`.
+- Public: state `velocity`, `aim_direction`, `angular_velocity`; method
+  `full_stop()`; signal `context_menu_requested`.
+- Inputs: **LMB** click / hold / double-click (see above). Signals:
+  `context_menu_requested`.
 
 ### Flight indicators
 - Scenes/scripts: `res://scenes/main/flight_indicators.tscn` +
@@ -64,6 +85,23 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - `VectorArrow` (`res://scenes/main/vector_arrow.tscn` + `vector_arrow.gd`) is a
   reusable arrow built from a `Line2D` shaft + `Polygon2D` head, oriented by
   `rotation` and sized by `length` — no custom `_draw`.
+
+### Command bar
+- Scenes/scripts: `res://scenes/ui/command_bar.tscn` + `command_bar.gd`
+  (`class_name CommandBar`, a `CanvasLayer`).
+- A bottom bar (`PanelContainer` anchored to the bottom edge) with an empty
+  button row; the root `Control` uses `mouse_filter = IGNORE` so only future
+  buttons capture clicks and the play area stays interactive. Placeholder for
+  upcoming toggles (e.g. auto-decelerate / flight assist).
+
+### Context menu
+- Scenes/scripts: `res://scenes/ui/context_menu.tscn` + `context_menu.gd`
+  (`class_name ContextMenu`, a `CanvasLayer`).
+- Opened at the cursor on a ship double-click. A full-screen `Catcher` `Control`
+  behind the panel blocks flight clicks while open and dismisses on a click
+  outside. Emits orders as signals (`full_stop_requested`); `TacticalCombat`
+  wires the ship's `context_menu_requested` → `open_at_mouse` and the menu's
+  `full_stop_requested` → `ship.full_stop`, so the ship stays UI-free.
 
 ### Space grid
 - Scenes/scripts: `res://scenes/main/space_grid.tscn` + `space_grid.gd`

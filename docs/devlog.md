@@ -17,6 +17,132 @@ Entry template:
 
 ---
 
+## 2026-09-09 — Physical flight + LMB command scheme (cruise removed)  (branch: feat/ship-topdown-view)
+
+**Did:** Pivoted the flight model to pure Newtonian and reworked the controls.
+Removed automatic linear `damping` (space is frictionless; momentum persists) and
+tore out the whole cruise/dial-a-velocity system (state, autopilot, and the pink
+gauge in `FlightIndicators`). New LMB scheme in `Ship._unhandled_input`:
+- **Click** = turn toward the point only (no thrust), *deferred* by
+  `DOUBLE_CLICK_WINDOW_MS` (250 ms) so it can be told apart from a double-click.
+- **Hold** = turn + thrust once held past `hold_thrust_delay` (0.15 s).
+- **Double-click** = emit `context_menu_requested`; the mode opens a context menu.
+Added a `ContextMenu` (`CanvasLayer`) at the cursor with **Full Stop** → a
+physical retro-burn (`Ship.full_stop`/`_apply_braking`, spends `thrust_force/mass`
+opposite velocity until at rest). The command bar was kept but emptied as a
+placeholder for a future auto-decelerate toggle.
+
+**Why (decisions):**
+- The target feel is *physical movement in space*: you thrust, you drift, nothing
+  slows you but your own engines. Artificial `damping` contradicted that.
+- Mouse buttons: **RMB is reserved for other actions**, so "stop" is an *order*
+  from a menu rather than a held mouse button. Double-click opens that menu.
+- Click-vs-hold split lets you re-orient without accelerating (click) or fly
+  (hold) on one button; the double-click menu hosts discrete ship orders.
+- Stop is modelled as real retro-thrust (mass-scaled), keeping the physics honest
+  and reusing the mass hook (heavier ships stop slower).
+
+**Learned:** The first click of a double-click is indistinguishable from a single
+click until the second click arrives, so a single-click turn must be **deferred**
+by the double-click window and cancelled if the second click lands — otherwise the
+ship visibly rotates before the menu opens. Cost: ~250 ms latency on a pure
+turn-click (tunable via `DOUBLE_CLICK_WINDOW_MS`). Keep world-click handling in
+`_unhandled_input` so `CanvasLayer` UI (menu/bar) consumes its own clicks first.
+
+**Follow-ups:** Add the auto-decelerate / flight-assist toggle to the command bar;
+flesh out the context menu with more orders (match velocity, orbit, align); tune
+`hold_thrust_delay` and the double-click window for feel.
+
+---
+
+## 2026-09-09 — Cruise armed via a command bar toggle  (branch: feat/ship-topdown-view)
+
+**Did:** Gated cruise dialing behind a new `Ship.cruise_armed` flag and added a
+bottom **command bar** (`scenes/ui/command_bar.tscn`, `class_name CommandBar`, a
+`CanvasLayer`) with a **Cruise** toggle. The bar emits `cruise_armed_changed`;
+`TacticalCombat` wires it to `ship.cruise_armed` in `_ready`. While armed, an LMB
+**press-and-drag** dials the course (dropped the double-click requirement); the
+ship now reads it in `_unhandled_input` so the toggle button's clicks don't leak
+into the world. Turning the toggle off releases the active cruise. Also fixed the
+earlier conflict where LMB was bound to `thrust` (removed it from the action).
+
+**Why:** The player wanted cruise to be switched on explicitly rather than firing
+on any double-click, surfaced as a button in a bottom command bar. Routing the
+toggle through a signal keeps the UI decoupled from the ship (guidelines: no
+direct cross-system references), and it's the first real use for a `CanvasLayer`
+HUD in the tactical mode.
+
+**Learned:** Use `_unhandled_input` (not `_input`) for world clicks when a
+`Control`/`CanvasLayer` UI is present — GUI consumes handled events, so button
+presses won't start a dial, while clicks in the `mouse_filter = IGNORE` play area
+still fall through. Adding a new `class_name` (CommandBar) outside the editor
+needs the global class cache regenerated (`--editor --headless --quit`) or the
+`as CommandBar` cast fails to parse and the scene won't load.
+
+**Follow-ups:** More command-bar actions (stop, jump, scan) as modes arrive;
+consider an `EventBus` autoload once several systems emit/consume these toggles.
+
+---
+
+## 2026-09-09 — Cruise: double-click-and-hold dialed speed + gauge  (branch: feat/ship-topdown-view)
+
+**Did:** Added a set-and-forget cruise command to `Ship`. **Double-click-and-hold**
+LMB live-dials a commanded velocity — direction toward the cursor, speed from the
+cursor distance (`cruise_full_speed_distance` away = `max_speed`); release commits.
+`_apply_cruise_thrust` autopilots: aims along the command and thrusts forward once
+roughly aligned (`cruise_thrust_alignment`) until along-track speed reaches the
+target. A plain hold-aim or `thrust` cancels it. New public state `cruise_target`/
+`cruise_active`. `FlightIndicators` now `_draw`s a pink cruise gauge (faint track =
+max speed, filled segment = dialed fraction) along the commanded heading.
+
+**Why:** The player wanted to point-and-set a travel vector with a readable
+throttle rather than hold thrust manually. Distance-dials-speed reuses the cursor
+we already track; the gauge makes "what fraction of max" legible. Detecting the
+gesture via `InputEventMouseButton.double_click` + a `_dialing` flag cleanly
+separates it from single-hold manual aim.
+
+**Learned:** The first click of a double briefly satisfies `is_mouse_button_pressed`
+(single hold-aim), so cruise handling keys off the `double_click` event and a
+`_dialing` flag instead of polling the button. Forward-only thrust can't brake, so
+dialing a slower speed relies on `damping` to coast down — fine now, but a
+retro/lateral thruster is the honest fix later.
+
+**Follow-ups:** Retro/lateral thrust so cruise can actively decelerate/strafe;
+tune `cruise_full_speed_distance` for camera zoom; maybe show a numeric %% on the
+gauge.
+
+---
+
+## 2026-09-09 — Momentum-based turning + mass model  (branch: feat/ship-topdown-view)
+
+**Did:** Replaced the ship's instant snap-to-aim rotation with momentum turning.
+`Ship` now integrates `angular_velocity`: `_apply_turning` steers toward the aim
+angle under an `angular_accel = turn_torque / mass` limit and brakes early
+(`sqrt(2·a·error)`) so it arrives without oscillating, capped by `max_turn_speed`
+and bled by `angular_damping`. Thrust now pushes along the ship's **actual nose**
+(`Vector2.UP.rotated(rotation)`) instead of the aim vector, and is a force:
+`accel = thrust_force / mass`. Replaced the `thrust_accel` export with `mass` +
+`thrust_force` (Flight group) and added a Turning group (`turn_torque`,
+`max_turn_speed`, `angular_damping`). New public state: `angular_velocity`.
+
+**Why:** The player wanted turning to carry momentum like acceleration does, and
+to set up **physical behavior** where larger-mass ships need more thrust. Dividing
+both thrust and torque by `mass` makes that scaling fall out naturally, and
+thrusting along the real heading (not the aim) means the ship must finish rotating
+before its momentum points where you want — the core of the drift feel.
+
+**Learned:** Applying thrust along the nose instead of the aim is what actually
+makes rotation *matter*; with aim-thrust the heading lag would be cosmetic. The
+"brake early" arrive formula avoids a PID/oscillation without tuning. Couldn't run
+the headless load check this session — the Godot executable named in `AGENTS.md`
+isn't present in this checkout — but GDScript static analysis is clean.
+
+**Follow-ups:** Verify feel in-editor and tune default `turn_torque`/
+`max_turn_speed`. Consider deriving moment of inertia from hull size (not just
+mass) once ship sizes vary, and a reverse/retro-thrust or lateral thrusters.
+
+---
+
 ## 2026-08-29 — Mode system; free flight becomes tactical combat  (branch: feat/ship-topdown-view)
 
 **Did:** Introduced a lightweight `ModeManager` (`scripts/mode_manager.gd`) with a
