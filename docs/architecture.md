@@ -43,8 +43,12 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 ### Ship (player)
 - Scenes/scripts: `res://scenes/ship/ship.tscn` + `res://scenes/ship/ship.gd`
   (`class_name Ship`, `@tool`).
-- Rendered via `_draw` as an elongated diamond (kite): the longer tip is the
-  nose. **Forward is -Y** (nose points up).
+- **Visual is a separate scene:** `res://scenes/ship/ship_hull.tscn` +
+  `res://scenes/ship/ship_hull.gd` (`class_name ShipHull`, `@tool`), instanced
+  as a child of `Ship`. It renders via `_draw` an elongated diamond (kite) whose
+  longer tip is the nose, and inherits the ship's rotation. **Forward is -Y**
+  (nose points up). Keeping the hull out of `ship.gd` keeps drawing and flight
+  logic decoupled (no god class).
 - **Physical flight:** movement is pure Newtonian — no drag/damping, so momentum
   is never bled off automatically. `_apply_turning` builds/sheds `angular_velocity`
   under a `turn_torque / mass` limit and brakes early to arrive on the aim without
@@ -67,9 +71,9 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - **Mass model:** both thrust and turn are forces divided by `mass`, so
   larger-mass ships need bigger `thrust_force`/`turn_torque` for the same
   response — the hook for heavier ships carrying beefier engines.
-- Tunables (`@export`): hull dimensions/colors; Flight — `mass`, `thrust_force`,
-  `max_speed`, `hold_thrust_delay`; Turning — `turn_torque`, `max_turn_speed`,
-  `angular_damping`.
+- Tunables (`@export`): Flight — `mass`, `thrust_force`, `max_speed`,
+  `hold_thrust_delay`; Turning — `turn_torque`, `max_turn_speed`,
+  `angular_damping`. Hull dimensions/colors live on the `ShipHull` scene.
 - Public: state `velocity`, `aim_direction`, `angular_velocity`; method
   `full_stop()`; signal `context_menu_requested`.
 - Inputs: **LMB** click / hold / double-click (see above). Signals:

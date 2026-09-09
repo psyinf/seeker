@@ -17,6 +17,23 @@ Entry template:
 
 ---
 
+## 2026-09-09 — Ship visual split into its own ShipHull scene  (branch: feat/ship-topdown-view)
+
+**Did:** Extracted the ship's hull drawing out of `ship.gd` into a standalone
+`res://scenes/ship/ship_hull.tscn` + `ship_hull.gd` (`class_name ShipHull`,
+`@tool`), instanced as a child of `Ship`. The hull's `@export` dimensions/colors
+and `_draw`/`_hull_points` moved with it; `Ship` now owns only flight logic and
+no longer defines the visual tunables. `ship.tscn` instances the hull child.
+**Why:** `ship.gd` was mixing rendering with physics — a step toward a god
+class. A separate scene keeps drawing and flight decoupled and lets the visual
+be swapped/edited independently (guidelines: no god classes, one responsibility).
+**Learned:** The hull is a child `Node2D`, so it inherits `Ship.rotation` for
+free and draws in local space (nose at -Y) — no extra wiring needed.
+**Follow-ups:** Later the hull can grow thruster/engine sub-nodes or swap art per
+ship size without touching the flight code.
+
+---
+
 ## 2026-09-09 — Physical flight + LMB command scheme (cruise removed)  (branch: feat/ship-topdown-view)
 
 **Did:** Pivoted the flight model to pure Newtonian and reworked the controls.
