@@ -17,6 +17,35 @@ Entry template:
 
 ---
 
+## 2026-09-09 — Fire-control module (Mk1 predict / Mk2 lead) + Newtonian bolts  (branch: feat/ship-topdown-view)
+
+**Did:** Bolts now inherit the ship's momentum — `Ship` copies `velocity` into
+each turret's new `base_velocity` every frame, and `ShipTurret._fire` launches
+`dir * projectile_speed + base_velocity`. Added `fire_control.gd`
+(`class_name FireControl`, `@tool`, `top_level`) as a child module of `Ship` with
+no visual hardware. **Mk1** aims turrets at the cursor and draws where the
+drifted bolt actually lands (trajectory + impact reticle + dashed drift). **Mk2**
+solves the lead angle and writes it to each turret's new `aim_override`, drawing
+a green locked reticle (red = no solution). The command bar gained a button that
+cycles None -> Mk1 -> Mk2 and emits `fire_control_mode_changed`; `TacticalCombat`
+wires it to `Ship.set_fire_control_mode`.
+**Why:** The user asked for a reconfigurable fire-control module that shows and
+then assists the firing solution. That is only meaningful once shots inherit ship
+momentum (otherwise a shot always hits exactly where the barrel points), so we
+switched bolts to Newtonian first. Keeping the computer as its own signal-wired
+component (not baked into `Ship` or `ShipTurret`) matches the one-responsibility
+split — turrets fire, the module advises/aims.
+**Learned:** Drawing world-space overlays from a node parented to the *rotating*
+ship is painful; setting `top_level = true` on `FireControl` detaches its
+transform so `_draw` uses world coordinates directly. The lead solve is the
+standard stationary-target intercept: pick barrel direction so
+`muzzle_velocity + platform_velocity` points at the target; it has no solution
+when the platform outruns the muzzle (negative discriminant) — surfaced as a red
+reticle rather than a silent miss.
+**Follow-ups:** Bolts still have no collision/damage, so "land" is a predicted
+point, not an impact on a target. A future Mk1 could also draw the reachable
+firing-envelope arc. Fire-control mode isn't persisted in a save yet.
+
 ## 2026-09-09 — Mouse-aimed turret + RMB firing  (branch: feat/ship-topdown-view)
 
 **Did:** Added `ship_turret.gd` (`class_name ShipTurret`, `@tool`), instanced on

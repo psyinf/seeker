@@ -99,15 +99,33 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   tip along its aim and emits `projectile_fired(projectile)`; it never adds the
   bolt to the tree itself. Weapon params (`projectile_scene`, `fire_rate`,
   `projectile_speed`) are per-turret exports, so different/multiple turrets are
-  just more `ShipTurret` nodes with different values — no code changes.
+  just more `ShipTurret` nodes with different values — no code changes. Two
+  runtime fields let the ship/fire-control drive it: `base_velocity` (platform
+  momentum added to every bolt) and `aim_override` (a world aim direction that
+  supersedes mouse-tracking; `Vector2.ZERO` = aim at the cursor). Exposes
+  `muzzle_position()` for the fire-control geometry.
 - **Firing (RMB):** `Ship._ready` collects every `ShipTurret` child and connects
   their `projectile_fired`. **RMB** (in `_unhandled_input`) toggles `firing` on
   all turrets via `_set_firing`; the ship relays each turret's shot up through
   its own `projectile_fired`. `TacticalCombat` adds the bolt to the **world**
-  node (not the ship) so it flies free of the ship's transform.
+  node (not the ship) so it flies free of the ship's transform. Each frame the
+  ship copies its `velocity` into every turret's `base_velocity`, so bolts
+  inherit the hull's momentum (Newtonian: a shot fired while moving drifts).
 - **Projectile:** `res://scenes/ship/projectile.tscn` + `projectile.gd`
   (`class_name Projectile`) — a self-drawing bolt that travels at its `launch()`
-  velocity in a straight line and `queue_free`s after `lifetime`.
+  velocity in a straight line and `queue_free`s after `lifetime`. `launch()` is
+  fed muzzle velocity **plus** the turret's `base_velocity`.
+- **Fire control (module, no hardware):** `res://scenes/ship/fire_control.gd`
+  (`class_name FireControl`, `@tool`), a child `Node2D` of `Ship` with
+  `top_level = true` so its overlay draws in world space. `Ship._ready` grabs it
+  and calls `setup(self, turrets)`. Its `mode` is `FireControl.Mode`
+  (`NONE`/`MK1`/`MK2`); the ship sets it via `set_fire_control_mode(int)`.
+  **Mk1** aims turrets at the cursor and draws where the momentum-drifted bolt
+  actually lands (trajectory + impact reticle + dashed drift line). **Mk2**
+  solves the lead angle (`_firing_solution`: choose a barrel direction so
+  `muzzle_velocity + platform_velocity` points at the cursor) and writes it to
+  each turret's `aim_override`, drawing a green locked reticle (red when the ship
+  outruns the muzzle and no solution exists). Emits `mode_changed(int)`.
 - Public: state `velocity`, `aim_direction`, `angular_velocity`; per-frame
   thruster state `main_throttle`, `rcs_torque`, `rcs_translation` (read by
   `ShipThrusters`); method `full_stop()`; signals `context_menu_requested`,
@@ -129,10 +147,12 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 ### Command bar
 - Scenes/scripts: `res://scenes/ui/command_bar.tscn` + `command_bar.gd`
   (`class_name CommandBar`, a `CanvasLayer`).
-- A bottom bar (`PanelContainer` anchored to the bottom edge) with an empty
-  button row; the root `Control` uses `mouse_filter = IGNORE` so only future
-  buttons capture clicks and the play area stays interactive. Placeholder for
-  upcoming toggles (e.g. auto-decelerate / flight assist).
+- A bottom bar (`PanelContainer` anchored to the bottom edge); the root
+  `Control` uses `mouse_filter = IGNORE` so only its buttons capture clicks and
+  the play area stays interactive. Hosts the **fire-control selector**: a button
+  that cycles None -> Mk1 -> Mk2, shows the active module in its label, and emits
+  `fire_control_mode_changed(int)`. `TacticalCombat` wires that signal to
+  `Ship.set_fire_control_mode`.
 
 ### Context menu
 - Scenes/scripts: `res://scenes/ui/context_menu.tscn` + `context_menu.gd`

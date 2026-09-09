@@ -34,3 +34,6 @@ theme_override_constants/margin_bottom = 8
 [node name="Buttons" type="HBoxContainer" parent="Root/Bar/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 8
+[node name="FireControl" type="Button" parent="Root/Bar/Margin/Buttons"]
+layout_mode = 2
+text = "Fire Control: None"
