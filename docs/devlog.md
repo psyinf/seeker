@@ -17,7 +17,52 @@ Entry template:
 
 ---
 
-## 2026-09-09 — Fire-control module (Mk1 predict / Mk2 lead) + Newtonian bolts  (branch: feat/ship-topdown-view)
+## 2026-09-09 — Shootable targets, swept-ray hits, Mk1 fix, 3-tier fire control  (branch: feat/ship-topdown-view)
+
+**Did:** Added shootable `Target`/`TargetField` (see prior entry). Switched bolt
+hit detection to a **per-frame swept ray** (`intersect_ray`, `collide_with_areas`,
+targets layer) because fast bolts tunnelled past the small `Area2D` targets. Fixed
+Mk1 prediction: flight time now uses the bolt's **closing speed along the aim**
+(`muzzle_speed + velocity·aim`) so the impact reticle matches where shots really
+pass through while maneuvering. Reworked fire control into three tiers — **Mk1**
+predict, **Mk2** lead **pip** (shows where to point, player still aims), **Mk3**
+auto-aim (old Mk2). Command bar now cycles None→Mk1→Mk2→Mk3.
+**Why:** Targets that fly-through-but-shoot need hit detection off the ship's
+(non-existent) body; a swept ray is tunnel-proof and needs no projectile body.
+The user wanted an assist ladder: see-your-drift → see-where-to-aim → auto-aim.
+**Learned:** Godot `Area2D` overlaps are sampled per physics frame, so a
+1100–1700 px/s bolt skips a 16 px target between ticks — ray-sweeping the step is
+the robust fix. For a momentum-carried bolt, the lead error scales with flight
+time, and flight time must divide by the **closing** speed (`speed + v·aim`), not
+the muzzle speed, or the predicted lead reads low.
+**Follow-ups:** Mk2 pip is circular (cursor is both target and aim) — fine as a
+manual indicator; revisit if we add designated targets. Score/FX on kills.
+
+---
+
+
+**Did:** Added `Target` (`res://scenes/combat/target.tscn`, `class_name Target`,
+`@tool`) — a self-drawing `Area2D` on a new **targets** collision layer (4) that
+flashes on `hit()`, tracks `hit_points`, and emits `destroyed(at)` before freeing
+itself. Gave `Projectile` a `Hitbox` `Area2D` (layer 2 = projectiles, mask 4 =
+targets) that calls `hit()` and despawns on overlap. Added `TargetField`
+(`class_name TargetField`), a spawner that scatters `count` targets uniformly
+across an annulus around its origin on `_ready`, and instanced it in
+`TacticalCombat`.
+**Why:** The user wanted random things to shoot that the ship does **not**
+collide with. Since the ship is a plain `Node2D` with no physics body, putting
+hit detection entirely on `Area2D` layers means bolts register hits while the
+ship simply flies through — no movement blocking, no extra ship collision code.
+**Learned:** Only one side of an `Area2D` pair needs `monitoring`; the bolt
+monitors (mask 4) and the target is merely `monitorable`, so targets can keep
+`monitoring = false`. Uniform scatter across an annulus needs
+`r = sqrt(lerp(min², max²))`, not a linear radius (which clumps toward the
+center).
+**Follow-ups:** Score/impact FX on `target_destroyed`; targets are static (no
+drift) for now.
+
+---
+
 
 **Did:** Bolts now inherit the ship's momentum — `Ship` copies `velocity` into
 each turret's new `base_velocity` every frame, and `ShipTurret._fire` launches

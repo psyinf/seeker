@@ -2,18 +2,21 @@
 class_name FireControl
 extends Node2D
 ## Ship fire-control computer — a module with no visual hardware of its own. It
-## reads the ship's velocity and the mounted turrets, then either predicts where
-## mouse-aimed shots will actually land (Mk1) or solves the lead angle so shots
-## hit the cursor (Mk2). Because bolts inherit the ship's momentum, a straight
-## shot drifts while moving; this module makes that drift visible and, at Mk2,
-## corrects for it. Owns no flight or weapon hardware — it only advises and aims.
+## reads the ship's velocity and the mounted turrets, then assists firing at
+## three escalating tiers. Because bolts inherit the ship's momentum, a straight
+## shot drifts while moving; this module makes that drift visible and, at the top
+## tier, corrects for it. Owns no flight or weapon hardware — it only advises and
+## aims.
+##  - Mk1: aim at the cursor, predict where the drifting bolt actually passes.
+##  - Mk2: solve the lead and show where to point, but leave aiming to the player.
+##  - Mk3: solve the lead and auto-slew the turrets so shots hit the cursor.
 ##
 ## Drawn in world space (top_level) so the overlay ignores the hull's rotation.
 
 ## Emitted whenever the active module changes, so the HUD can reflect it.
 signal mode_changed(mode: int)
 
-enum Mode { NONE, MK1, MK2 }
+enum Mode { NONE, MK1, MK2, MK3 }
 
 ## Predicted-trajectory / impact color (Mk1) and the no-solution warning (Mk2).
 @export var predict_color: Color = Color("ff6b6b")
@@ -28,7 +31,7 @@ var mode: int = Mode.NONE:
 		if value == mode:
 			return
 		mode = value
-		if mode != Mode.MK2:
+		if mode != Mode.MK3:
 			_clear_overrides() # hand aiming back to the turrets' own mouse tracking
 		queue_redraw()
 		mode_changed.emit(mode)
@@ -50,7 +53,7 @@ func setup(ship: Ship, turrets: Array[ShipTurret]) -> void:
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint() or _ship == null:
 		return
-	if mode == Mode.MK2:
+	if mode == Mode.MK3:
 		_aim_turrets()
 	if mode != Mode.NONE:
 		queue_redraw() # overlay follows the moving ship and cursor
@@ -63,6 +66,8 @@ func _draw() -> void:
 		Mode.MK1:
 			_draw_prediction()
 		Mode.MK2:
+			_draw_lead()
+		Mode.MK3:
 			_draw_solution()
 
 
@@ -73,22 +78,48 @@ func _draw_prediction() -> void:
 	var target := get_global_mouse_position()
 	for turret in _turrets:
 		var muzzle := turret.muzzle_position()
-		var to_target := target - muzzle
-		var dist := to_target.length()
-		if dist < 0.001:
+		var impact := _predicted_impact(muzzle, target, turret.projectile_speed)
+		if impact == Vector2.INF:
 			continue
-		var aim := to_target / dist
-		var bolt_velocity := _ship.velocity + aim * turret.projectile_speed
-		if bolt_velocity.length() < 0.001:
-			continue
-		var impact := muzzle + bolt_velocity.normalized() * dist
 		draw_line(muzzle, impact, predict_color, 2.0, true)
 		draw_arc(impact, reticle_radius, 0.0, TAU, 24, predict_color, 2.0, true)
 		draw_dashed_line(target, impact, Color(predict_color, 0.5), 1.0, 6.0)
 	draw_arc(target, 3.0, 0.0, TAU, 12, Color(predict_color, 0.7), 1.0, true)
 
 
-## Mk2: solve the lead so shots land on the cursor and slew the turrets to it.
+## Mk2: draw only the point each cursor-aimed shot passes through — a clean "lead
+## pip" the player flies onto the target. Turrets keep tracking the mouse, so aim
+## stays manual; this is Mk1's impact point without the diagnostic trajectory.
+func _draw_lead() -> void:
+	var target := get_global_mouse_position()
+	for turret in _turrets:
+		var impact := _predicted_impact(turret.muzzle_position(), target, turret.projectile_speed)
+		if impact == Vector2.INF:
+			continue
+		draw_arc(impact, reticle_radius, 0.0, TAU, 24, solution_color, 2.0, true)
+		draw_circle(impact, 2.0, solution_color)
+	# Faint cursor mark so the raw aim point stays readable behind the pip.
+	draw_arc(target, 3.0, 0.0, TAU, 12, Color(solution_color, 0.4), 1.0, true)
+
+
+## World point a turret's next cursor-aimed bolt passes through, accounting for the
+## ship's momentum. The bolt closes on the aim point at muzzle speed plus the
+## ship's velocity along the aim line; over that flight time it drifts sideways.
+## Returns Vector2.INF when the ship outruns the bolt and there is no impact.
+func _predicted_impact(muzzle: Vector2, target: Vector2, muzzle_speed: float) -> Vector2:
+	var to_target := target - muzzle
+	var dist := to_target.length()
+	if dist < 0.001 or muzzle_speed <= 0.0:
+		return Vector2.INF
+	var aim := to_target / dist
+	var closing := _ship.velocity.dot(aim) + muzzle_speed
+	if closing <= 0.001:
+		return Vector2.INF
+	var flight_time := dist / closing
+	return muzzle + (_ship.velocity + aim * muzzle_speed) * flight_time
+
+
+## Mk3: solve the lead so shots land on the cursor and slew the turrets to it.
 ## Green reticle = solution locked; red = the ship outruns the muzzle, no shot.
 func _draw_solution() -> void:
 	var target := get_global_mouse_position()

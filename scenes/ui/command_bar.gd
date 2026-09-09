@@ -1,13 +1,18 @@
 class_name CommandBar
 extends CanvasLayer
 ## Bottom command bar for the tactical mode. Hosts action toggles; for now it
-## carries the fire-control module selector, which cycles None -> Mk1 -> Mk2 and
-## always shows the active module.
+## carries the fire-control module selector, which cycles
+## None -> Mk1 -> Mk2 -> Mk3 and always shows the active module.
 
-## Emitted when the player cycles the module (FireControl.Mode int: 0/1/2).
+## Emitted when the player cycles the module (FireControl.Mode int: 0/1/2/3).
 signal fire_control_mode_changed(mode: int)
 
-const _FIRE_CONTROL_LABELS := ["Fire Control: None", "Fire Control: Mk1", "Fire Control: Mk2"]
+const _FIRE_CONTROL_LABELS := [
+	"Fire Control: None",
+	"Fire Control: Mk1",
+	"Fire Control: Mk2",
+	"Fire Control: Mk3",
+]
 
 @onready var _fire_control_button: Button = $Root/Bar/Margin/Buttons/FireControl
 

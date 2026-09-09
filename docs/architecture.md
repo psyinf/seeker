@@ -114,24 +114,48 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - **Projectile:** `res://scenes/ship/projectile.tscn` + `projectile.gd`
   (`class_name Projectile`) — a self-drawing bolt that travels at its `launch()`
   velocity in a straight line and `queue_free`s after `lifetime`. `launch()` is
-  fed muzzle velocity **plus** the turret's `base_velocity`.
+  fed muzzle velocity **plus** the turret's `base_velocity`. Each physics frame it
+  **ray-sweeps** its step (`intersect_ray`, `collide_with_areas`, mask **4 =
+  targets**, bodies off) so fast bolts can't tunnel past a small target; on a hit
+  it calls `hit()` on the target and despawns. The ship has no physics body, so
+  bolts pass through it — only targets are struck.
 - **Fire control (module, no hardware):** `res://scenes/ship/fire_control.gd`
   (`class_name FireControl`, `@tool`), a child `Node2D` of `Ship` with
   `top_level = true` so its overlay draws in world space. `Ship._ready` grabs it
   and calls `setup(self, turrets)`. Its `mode` is `FireControl.Mode`
-  (`NONE`/`MK1`/`MK2`); the ship sets it via `set_fire_control_mode(int)`.
+  (`NONE`/`MK1`/`MK2`/`MK3`); the ship sets it via `set_fire_control_mode(int)`.
   **Mk1** aims turrets at the cursor and draws where the momentum-drifted bolt
-  actually lands (trajectory + impact reticle + dashed drift line). **Mk2**
-  solves the lead angle (`_firing_solution`: choose a barrel direction so
-  `muzzle_velocity + platform_velocity` points at the cursor) and writes it to
-  each turret's `aim_override`, drawing a green locked reticle (red when the ship
-  outruns the muzzle and no solution exists). Emits `mode_changed(int)`.
+  actually passes (trajectory + impact reticle + dashed drift line); flight time
+  uses the bolt's closing speed along the aim (`muzzle_speed + velocity·aim`) so
+  the lead matches real impact while maneuvering. **Mk2** draws only that same
+  pass-through point as a clean green **lead pip** (no trajectory clutter) and
+  leaves the turrets tracking the mouse — the player flies the pip onto the
+  target to hit; aim stays manual. **Mk3** solves the lead angle
+  (`_firing_solution`) and applies it to each turret's `aim_override`, auto-slewing
+  them, drawing a green locked reticle (red when the ship outruns the
+  muzzle and no solution exists). Emits `mode_changed(int)`. The shared
+  `_predicted_impact()` helper feeds both Mk1 and Mk2.
 - Public: state `velocity`, `aim_direction`, `angular_velocity`; per-frame
   thruster state `main_throttle`, `rcs_torque`, `rcs_translation` (read by
   `ShipThrusters`); method `full_stop()`; signals `context_menu_requested`,
   `projectile_fired`.
 - Inputs: **LMB** click / hold / double-click (flight, see above); **RMB** hold
   = fire turrets. Signals: `context_menu_requested`, `projectile_fired`.
+
+### Targets
+- **Target:** `res://scenes/combat/target.tscn` + `target.gd`
+  (`class_name Target`, `@tool`) — a self-drawing `Area2D` on collision layer
+  **4 = targets** (mask 0, `monitoring = false`), so turret bolts detect it but
+  the ship (no physics body) flies straight through: targets never block flight.
+  It flashes on `hit()`, decrements `hit_points`, and on reaching zero emits
+  `destroyed(at)` and frees itself. `_ready` syncs the collision circle to the
+  drawn `radius`.
+- **TargetField:** `res://scenes/combat/target_field.gd` (`class_name
+  TargetField`) — a spawner `Node2D` that, on `_ready`, scatters `count` targets
+  uniformly across an annulus (`min_radius`..`max_radius`) around its origin
+  (`spawn_seed` 0 = random each run). Relays each kill up via
+  `target_destroyed(at)`. Owns spawning only. Instanced in `TacticalCombat` with
+  its `target_scene` pointing at `target.tscn`.
 
 ### Flight indicators
 - Scenes/scripts: `res://scenes/main/flight_indicators.tscn` +
