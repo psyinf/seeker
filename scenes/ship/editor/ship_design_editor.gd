@@ -1,16 +1,23 @@
 extends Node2D
 ## In-game ship design editor. Edits a `ShipDesign` on a grid: left-click places
-## the selected module kind, right-click removes, mouse wheel / R rotates the
-## placement facing (and any directional cell under the cursor). A code-built
+## the selected module kind, right-click removes, mouse wheel zooms, R rotates the
+## placement facing (and any directional cell under the cursor). Normal mode only
+## builds within the class's hull footprint; H toggles hull-design mode (extend/
+## shrink the hull — a new hull type) when `allow_hull_design` is on. A code-built
 ## palette picks the kind, a stats panel shows the ship's derived totals, and the
-## bottom bar saves/loads/clears. The `Hull` child (SegmentedHull) renders the
-## design; `Hover` draws the cursor highlight. Standalone for now; wiring into
-## ModeManager comes later.
+## bottom bar news/clears/saves/loads and starts a Test Flight. The `Hull` child
+## (SegmentedHull) renders the design; `Hover` draws the cursor highlight. Hosted
+## by `ModeManager` as the `SHIP_EDITOR` mode (also runs standalone).
 
 const SAVE_PATH := "user://ship_designs/current.tres"
 const ZOOM_MIN := 0.3
 const ZOOM_MAX := 4.0
 const ZOOM_STEP := 1.1
+
+## When false, hull-design mode can't be entered, so this editor only ever lets
+## the player build modules within the fixed hull (the in-game default). Turn it
+## on to author new hull types by extending the footprint (H toggles it).
+@export var allow_hull_design: bool = true
 
 ## Kinds shown in the palette, in order, with their labels.
 const PALETTE := [
@@ -33,6 +40,9 @@ var selected_kind: ShipSegment.Kind = ShipSegment.Kind.HULL
 var place_facing: ShipSegment.Facing = ShipSegment.Facing.UP
 var hover_cell: Vector2i = Vector2i.ZERO
 var has_hover: bool = false
+## True while editing the hull footprint (extend/shrink the shell) instead of
+## placing modules within it. Only reachable when `allow_hull_design` is on.
+var _hull_design: bool = false
 
 @onready var _hull: Node2D = $Hull
 @onready var _hover: Node2D = $Hover
@@ -52,6 +62,14 @@ func _ready() -> void:
 	_select_kind(selected_kind)
 	_refresh_stats()
 	queue_redraw()
+
+
+## Receives a payload from `ModeManager.switch_to`; a `ShipDesign` (handed back by
+## tactical combat's "Back to Designer") is restored so editing continues.
+func setup(payload: Variant) -> void:
+	if payload is ShipDesign:
+		_replace_design(payload)
+		_set_status("Back from test flight")
 
 
 ## Local-space unit vector the placement facing points along.
@@ -80,8 +98,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_apply_zoom(ZOOM_STEP)
 			MOUSE_BUTTON_WHEEL_DOWN:
 				_apply_zoom(1.0 / ZOOM_STEP)
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_R:
-		_rotate(1)
+	elif event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_R:
+				_rotate(1)
+			KEY_H:
+				_toggle_hull_design()
 
 
 ## Zoom the view around the point under the cursor so it stays put.
@@ -105,6 +127,17 @@ func _update_hover() -> void:
 func _place() -> void:
 	if not has_hover:
 		return
+	if _hull_design:
+		var seg := design.get_segment_at(hover_cell)
+		if seg != null and seg.fixed:
+			_set_status("Cell locked")
+			return
+		if design.add_to_footprint(hover_cell):
+			_set_status("Hull extended")
+		return
+	if not design.is_in_footprint(hover_cell):
+		_set_status("Outside hull")
+		return
 	var existing := design.get_segment_at(hover_cell)
 	if existing != null and existing.fixed:
 		_set_status("Cell locked")
@@ -119,6 +152,12 @@ func _erase() -> void:
 	if existing != null and existing.fixed:
 		_set_status("Cell locked")
 		return
+	if _hull_design:
+		if design.remove_from_footprint(hover_cell):
+			_set_status("Hull trimmed")
+		return
+	if not design.is_in_footprint(hover_cell):
+		return
 	design.remove_at(hover_cell)
 
 
@@ -127,6 +166,21 @@ func _rotate(dir: int) -> void:
 	var segment: ShipSegment = design.get_segment_at(hover_cell) if has_hover else null
 	if segment != null and ShipSegment.is_directional(segment.kind):
 		segment.facing = place_facing
+	_hover.queue_redraw()
+
+
+## True while the editor is in hull-design mode; read by the hover overlay.
+func is_hull_design_mode() -> bool:
+	return _hull_design
+
+
+## Toggle hull-design mode (extend/shrink the hull). No-op when disabled, so a
+## shipped build can lock players to module placement within the fixed hull.
+func _toggle_hull_design() -> void:
+	if not allow_hull_design:
+		return
+	_hull_design = not _hull_design
+	_set_status("Hull design ON · LMB extend  RMB trim" if _hull_design else "Building within the hull")
 	_hover.queue_redraw()
 
 
@@ -186,8 +240,12 @@ func _build_ui() -> void:
 	_add_button(bar, "Clear", _on_clear)
 	_add_button(bar, "Save", _on_save)
 	_add_button(bar, "Load", _on_load)
+	_add_button(bar, "Test Flight", _on_test_flight)
 	_status_label = Label.new()
-	_status_label.text = "LMB place  ·  RMB remove  ·  R rotate  ·  wheel zoom"
+	var help := "LMB place  ·  RMB remove  ·  R rotate  ·  wheel zoom"
+	if allow_hull_design:
+		help += "  ·  H hull-design"
+	_status_label.text = help
 	bar.add_child(_status_label)
 
 
@@ -229,11 +287,8 @@ func _on_new() -> void:
 
 
 func _on_clear() -> void:
-	var empty := ShipDesign.new()
-	empty.ship_class = design.ship_class
-	empty.cell_size = design.cell_size
-	_replace_design(empty)
-	_set_status("Cleared")
+	design.clear_modules()
+	_set_status("Modules cleared")
 
 
 func _on_save() -> void:
@@ -252,6 +307,16 @@ func _on_load() -> void:
 		return
 	_replace_design(loaded)
 	_set_status("Loaded")
+
+
+## Hand the current design to tactical combat and switch to it, so the player can
+## fly what they just built. Only works when hosted by a `ModeManager`.
+func _on_test_flight() -> void:
+	var manager := get_parent() as ModeManager
+	if manager == null:
+		_set_status("Test flight needs ModeManager")
+		return
+	manager.switch_to(ModeManager.Mode.TACTICAL_COMBAT, design)
 
 
 func _replace_design(next: ShipDesign) -> void:

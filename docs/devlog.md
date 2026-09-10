@@ -17,6 +17,55 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Hull footprint: normal mode builds within the hull  (branch: feat/ship-design-editor)
+
+**Did:** Gave `ShipDesign` an explicit `footprint` (`Array[Vector2i]`) — the
+buildable cells that define a hull class — and drew the outer silhouette
+(`convex_hull()`) from it instead of from occupied cells, so emptying a cell keeps
+its shell. Added `is_in_footprint`/`add_to_footprint`/`remove_from_footprint` and
+`clear_modules` (wipe loadout, keep hull + fixed). `create_default()` seeds the
+footprint from the Nomad's cells. The editor now has two modes: **normal** only
+places/removes modules on footprint cells ("Outside hull" otherwise), and a
+**hull-design** mode (LMB extend / RMB trim the footprint = a new hull type)
+toggled by `H` and gated by a new `allow_hull_design` export so a shipped build
+can disable it entirely. Hover tints signal buildability (yellow/red/grey/cyan).
+**Why:** Extending the hull creates a new hull type; we want to keep that power
+but not expose it in the easy in-game flow. A fixed per-class footprint makes
+normal editing "fill the hull", with hull authoring behind a disablable toggle.
+**Learned:** With `editor` typed as `Node`, a method return used in `:=` infers as
+Variant and fails to parse — annotate (`var in_hull: bool = ...`) or compare
+against a literal. Deriving the silhouette from the footprint (not segments) is
+what makes "shell stays" work when a module is removed.
+**Follow-ups:** connectivity/adjacency rules for extensions; per-class footprint
+presets; still no flight stats derived from the design.
+
+---
+
+## 2026-09-10 — Editor "Test Flight" wires into ModeManager  (branch: feat/ship-design-editor)
+**Did:** Wired the ship design editor into `ModeManager` as a new `SHIP_EDITOR`
+mode and made `main.tscn` boot into it (`initial_mode = SHIP_EDITOR`). Added a
+**Test Flight** button to the editor's bottom bar: it grabs the hosting
+`ModeManager` via `get_parent()` and calls `switch_to(TACTICAL_COMBAT, design)`.
+`switch_to` now takes an optional `payload` and, after the new mode enters the
+tree, calls `setup(payload)` on it if the method exists. `TacticalCombat.setup`
+applies a `ShipDesign` payload via new `Ship.apply_design()`, which feeds the
+design to the ship's `SegmentedHull` so you fly the layout you just built. The
+return trip is symmetric: `TacticalCombat` keeps the flown design and shows a
+**< Back to Designer** button that calls `switch_to(SHIP_EDITOR, design)`; the
+editor's own `setup()` restores that design so editing resumes where it left off.
+**Why:** Closes the long-standing "wire the editor into ModeManager" follow-up and
+gives the build→fly loop a real, round-trip entry point without a global
+`GameState`.
+**Learned:** `add_child()` runs the child's `_ready` synchronously, so `@onready`
+refs (e.g. `TacticalCombat.ship`) are valid by the time `switch_to` calls
+`setup`. Keeping the payload a `Variant` + duck-typed `setup`/`has_method` keeps
+`ModeManager` decoupled from `ShipDesign`. The editor still runs standalone (no
+`ModeManager` parent) — Test Flight just reports it needs one.
+**Follow-ups:** derive flight stats (mass/thrust) from the design instead of only
+its visual.
+
+---
+
 ## 2026-09-10 — Editor zoom, fixed cells, drive nozzle/extension  (branch: feat/ship-design-editor)
 
 **Did:** Three editor adaptations. (1) **Zoom** — mouse wheel zooms the camera

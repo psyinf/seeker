@@ -118,6 +118,14 @@ func _ready() -> void:
 		_fire_control.setup(self, _turrets)
 
 
+## Render this ship using `design` (its SegmentedHull visual). Called when a
+## test flight starts from the ship editor.
+func apply_design(design: ShipDesign) -> void:
+	var hull := get_node_or_null("SegmentedHull") as SegmentedHull
+	if hull != null:
+		hull.design = design
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return

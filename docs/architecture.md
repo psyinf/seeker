@@ -36,10 +36,17 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 
 ### Modes
 - Script: `res://scripts/mode_manager.gd` (`class_name ModeManager`).
-- Holds a `Mode` enum (`TACTICAL_COMBAT`, `STRATEGIC_MAP`, `SYSTEM_JUMP`) and a
-  `PackedScene` per mode (`@export`). `switch_to(mode)` frees the current mode
-  node and instances the new one as its child, then emits `mode_changed`.
-- Only `tactical_combat_scene` is assigned today; the others are placeholders.
+- Holds a `Mode` enum (`TACTICAL_COMBAT`, `STRATEGIC_MAP`, `SYSTEM_JUMP`,
+  `SHIP_EDITOR`) and a `PackedScene` per mode (`@export`). `switch_to(mode,
+  payload := null)` frees the current mode node, instances the new one as its
+  child, calls `setup(payload)` on it when the method exists and a payload is
+  given, then emits `mode_changed`.
+- `tactical_combat_scene` and `ship_editor_scene` are assigned; `main.tscn` boots
+  into `SHIP_EDITOR` (`initial_mode = 3`). The strategic/jump scenes are still
+  placeholders. The editor's **Test Flight** hands its `ShipDesign` to tactical
+  combat via `switch_to(TACTICAL_COMBAT, design)`, and tactical combat's **Back to
+  Designer** button returns it via `switch_to(SHIP_EDITOR, design)` — a symmetric
+  round trip carried by the payload.
 
 ### Ship (player)
 - Scenes/scripts: `res://scenes/ship/ship.tscn` + `res://scenes/ship/ship.gd`
@@ -72,8 +79,13 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     `is_drive_extension()` (a drive cell is a nozzle unless another drive sits on
     its exhaust side, in which case it's an extension — the type is derived from
     placement, never chosen), and `create_default()` (the stock **Nomad-class**
-    starter, with core + center drive `fixed`). This is the save/load unit for a
-    layout (`.tres`).
+    starter, with core + center drive `fixed`). It also carries a `footprint`
+    (`Array[Vector2i]`) — the buildable cells that define the hull class; the
+    outer silhouette (`convex_hull()`) is drawn from the footprint (falling back
+    to occupied cells when unset), so emptying a cell keeps its shell. Mutators
+    `add_to_footprint`/`remove_from_footprint` (hull authoring), `is_in_footprint`
+    (buildable test), and `clear_modules` (wipe the loadout, keep hull + fixed).
+    This is the save/load unit for a layout (`.tres`).
   - `res://scenes/ship/module_stats.gd` (`class_name ModuleStats extends
     Resource`, `@tool`) — baseline stat block per kind (mass, power draw/gen,
     armor HP, build cost, crew/heat = 0 for now, plus cargo/scan/fuel extras).
@@ -85,15 +97,23 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     `create_default()` when its `design` is unset. It replaces `ShipHull` in
     `ship.tscn` as the stock visual.
   - **In-game editor:** `res://scenes/ship/editor/ship_design_editor.tscn` +
-    `ship_design_editor.gd` (a `Node2D` controller) — standalone grid editor:
+    `ship_design_editor.gd` (a `Node2D` controller) — grid editor:
     left-click places the palette-selected kind, right-click removes, `R` rotates
     facing, the mouse wheel zooms the camera (around the cursor). Fixed cells
-    reject place/remove. The single **Drive** palette entry places thruster cells
-    whose nozzle/extension role is derived by placement. A code-built UI shows a
-    module palette, live derived stats, and New/Clear/Save/Load (saves to
+    reject place/remove. **Normal mode only builds within the class's hull
+    footprint** (placing outside is rejected — "Outside hull"); pressing `H`
+    toggles **hull-design mode** (LMB extends / RMB trims the footprint = a new
+    hull type) when the editor's `allow_hull_design` export is on, so a shipped
+    build can lock players to module placement. The single **Drive** palette
+    entry places thruster cells whose nozzle/extension role is derived by
+    placement. A code-built UI shows a module palette, live derived stats, and
+    New/Clear/Save/Load/Test Flight (Clear keeps the hull + fixed cells; saves to
     `user://ship_designs/current.tres`). It reuses `SegmentedHull` (child `Hull`)
-    to render and `editor_hover.gd` (child `Hover`) to highlight the cursor cell.
-    Not yet wired into `ModeManager`; run the scene directly to open it.
+    to render and `editor_hover.gd` (child `Hover`) to highlight the cursor cell
+    (yellow place / red overwrite / grey outside-hull / cyan hull-design).
+    Wired into `ModeManager` as the `SHIP_EDITOR` mode; its **Test Flight** button
+    switches to tactical combat carrying the current design (still runs
+    standalone too — Test Flight then reports it needs a `ModeManager`).
   - **Not yet wired to flight/combat** — mass, thrust, and weapons still come from
     the existing `Ship`/turret/thruster systems. Per-segment physics is the
     planned follow-up.

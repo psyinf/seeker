@@ -21,6 +21,10 @@ extends Node2D
 @onready var context_menu := get_node_or_null(context_menu_path) as ContextMenu
 @onready var indicators := get_node_or_null(indicators_path) as FlightIndicators
 
+## The design being test-flown, kept so the "Back to Designer" button can hand it
+## back to the editor. Null when the mode was not entered from the editor.
+var _design: ShipDesign = null
+
 
 func _ready() -> void:
 	if ship != null and context_menu != null:
@@ -33,6 +37,34 @@ func _ready() -> void:
 		indicators.retro_burn_requested.connect(ship.set_retro_burn)
 	if ship != null:
 		ship.projectile_fired.connect(_on_ship_projectile_fired)
+
+
+## Receives a payload from `ModeManager.switch_to`. A `ShipDesign` (from the ship
+## editor's Test Flight) is applied to the ship so you fly what you just built,
+## and a "Back to Designer" button is shown to return with the same design.
+func setup(payload: Variant) -> void:
+	if payload is ShipDesign and ship != null:
+		_design = payload
+		ship.apply_design(_design)
+		_add_back_button()
+
+
+## A top-left button that returns to the ship editor, carrying the flown design.
+func _add_back_button() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	var button := Button.new()
+	button.text = "< Back to Designer"
+	button.position = Vector2(12, 12)
+	button.pressed.connect(_return_to_designer)
+	layer.add_child(button)
+
+
+func _return_to_designer() -> void:
+	var manager := get_parent() as ModeManager
+	if manager == null:
+		return
+	manager.switch_to(ModeManager.Mode.SHIP_EDITOR, _design)
 
 
 ## Places a turret bolt in the world so it flies free of the ship's transform.

@@ -14,9 +14,19 @@ func _draw() -> void:
 	var half := cs * 0.5
 	var rect := Rect2(center - Vector2(half, half), Vector2(cs, cs))
 	var occupied := editor.design.get_segment_at(editor.hover_cell) != null
-	var color := Color("ffd166") if not occupied else Color("ff6b6b")
+	var in_hull: bool = editor.design.is_in_footprint(editor.hover_cell)
+	var color: Color
+	if editor.is_hull_design_mode():
+		color = Color("5fd0ff") # editing the hull shell itself
+	elif not in_hull:
+		color = Color("6b7280") # outside the hull — not buildable
+	elif occupied:
+		color = Color("ff6b6b")
+	else:
+		color = Color("ffd166")
 	draw_rect(rect, color, false, 2.0)
-	if ShipSegment.is_directional(editor.selected_kind) and not occupied:
+	if not editor.is_hull_design_mode() and in_hull and not occupied \
+			and ShipSegment.is_directional(editor.selected_kind):
 		_draw_facing(center, editor.place_facing_dir(), half)
 
 

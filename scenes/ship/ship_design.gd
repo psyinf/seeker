@@ -24,6 +24,16 @@ extends Resource
 		segments = value
 		emit_changed()
 
+## The buildable cells that define this hull class (its outer shell). The editor's
+## normal mode only lets you place/remove modules on footprint cells; extending
+## the footprint (authoring a new hull type) is gated behind hull-design mode. The
+## outer silhouette is drawn from the footprint, so an emptied cell keeps its
+## shell instead of shrinking the ship.
+@export var footprint: Array[Vector2i] = []:
+	set(value):
+		footprint = value
+		emit_changed()
+
 
 ## The segment occupying `cell`, or null if that cell is empty.
 func get_segment_at(cell: Vector2i) -> ShipSegment:
@@ -57,6 +67,41 @@ func remove_at(cell: Vector2i) -> bool:
 	return false
 
 
+## True when `cell` is part of the hull footprint (a buildable cell).
+func is_in_footprint(cell: Vector2i) -> bool:
+	return footprint.has(cell)
+
+
+## Add `cell` to the footprint (extends the hull). Returns true if it was new.
+func add_to_footprint(cell: Vector2i) -> bool:
+	if footprint.has(cell):
+		return false
+	footprint.append(cell)
+	emit_changed()
+	return true
+
+
+## Remove `cell` from the footprint (shrinks the hull) and any segment on it.
+func remove_from_footprint(cell: Vector2i) -> bool:
+	if not footprint.has(cell):
+		return false
+	footprint.erase(cell)
+	remove_at(cell)
+	emit_changed()
+	return true
+
+
+## Remove every non-fixed module but keep the hull footprint and fixed cells, so
+## "Clear" wipes the loadout without discarding the hull.
+func clear_modules() -> void:
+	var kept: Array[ShipSegment] = []
+	for segment in segments:
+		if segment != null and segment.fixed:
+			kept.append(segment)
+	segments = kept
+	emit_changed()
+
+
 ## Inclusive grid bounds covering every cell; a zero-size rect when empty.
 func bounds() -> Rect2i:
 	if segments.is_empty():
@@ -68,15 +113,19 @@ func bounds() -> Rect2i:
 	return rect
 
 
-## The ship's outer silhouette: the convex hull of every cell's corners, in local
-## pixel space. Fewer than 3 points (empty/degenerate design) yields an empty array.
+## The ship's outer silhouette: the convex hull of the footprint's cell corners
+## (or, when no footprint is set, of the occupied cells), in local pixel space.
+## Fewer than 3 points (empty/degenerate design) yields an empty array.
 func convex_hull() -> PackedVector2Array:
+	var cells: Array[Vector2i] = footprint.duplicate()
+	if cells.is_empty():
+		for segment in segments:
+			if segment != null:
+				cells.append(segment.cell)
 	var points := PackedVector2Array()
 	var half := cell_size * 0.5
-	for segment in segments:
-		if segment == null:
-			continue
-		var center := Vector2(segment.cell) * cell_size
+	for cell in cells:
+		var center := Vector2(cell) * cell_size
 		points.append(center + Vector2(-half, -half))
 		points.append(center + Vector2(half, -half))
 		points.append(center + Vector2(half, half))
@@ -190,6 +239,10 @@ static func create_default() -> ShipDesign:
 		_seg(ShipSegment.Kind.THRUSTER, Vector2i(0, 1), ShipSegment.Facing.DOWN, true),
 		_seg(ShipSegment.Kind.THRUSTER, Vector2i(1, 1), ShipSegment.Facing.DOWN),
 	]
+	var fp: Array[Vector2i] = []
+	for segment in design.segments:
+		fp.append(segment.cell)
+	design.footprint = fp
 	return design
 
 

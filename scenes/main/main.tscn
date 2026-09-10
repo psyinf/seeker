@@ -1,10 +1,13 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/mode_manager.gd" id="1_mm"]
 [ext_resource type="PackedScene" path="res://scenes/modes/tactical_combat/tactical_combat.tscn" id="2_tc"]
+[ext_resource type="PackedScene" path="res://scenes/ship/editor/ship_design_editor.tscn" id="3_se"]
 
 [node name="Main" type="Node2D"]
 
 [node name="ModeManager" type="Node" parent="."]
 script = ExtResource("1_mm")
 tactical_combat_scene = ExtResource("2_tc")
+ship_editor_scene = ExtResource("3_se")
+initial_mode = 3
