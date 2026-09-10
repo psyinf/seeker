@@ -33,6 +33,7 @@ func _ready() -> void:
 	if ship != null and command_bar != null:
 		command_bar.fire_control_mode_changed.connect(ship.set_fire_control_mode)
 		command_bar.align_thrust_toggled.connect(ship.set_require_alignment)
+		command_bar.group_fire_toggled.connect(ship.set_group_firing)
 	if ship != null and indicators != null:
 		indicators.retro_burn_requested.connect(ship.set_retro_burn)
 	if ship != null:

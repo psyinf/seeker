@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ship/ship.tscn" id="1_ship"]
 [ext_resource type="Script" path="res://scenes/modes/tactical_combat/tactical_combat.gd" id="2_tc"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/context_menu.tscn" id="6_menu"]
 [ext_resource type="Script" path="res://scenes/combat/target_field.gd" id="7_field"]
 [ext_resource type="PackedScene" path="res://scenes/combat/target.tscn" id="8_target"]
+[ext_resource type="PackedScene" path="res://scenes/ui/weapons_panel.tscn" id="10_weapons"]
 
 [node name="TacticalCombat" type="Node2D"]
 script = ExtResource("2_tc")
@@ -38,3 +39,6 @@ script = ExtResource("9_markers")
 [node name="CommandBar" parent="." instance=ExtResource("5_cmd")]
 
 [node name="ContextMenu" parent="." instance=ExtResource("6_menu")]
+
+[node name="WeaponsPanel" parent="." instance=ExtResource("10_weapons")]
+ship_path = NodePath("../Ship")

@@ -13,6 +13,10 @@ signal context_menu_requested
 ## world so it keeps its own momentum instead of moving with the ship.
 signal projectile_fired(projectile: Node2D)
 
+## Emitted when the mounted weapons change (a new design is applied), so the HUD
+## weapons panel can rebuild its per-weapon rows.
+signal weapons_changed
+
 ## Turret spawned at each WEAPON cell when a design is applied.
 const TURRET_SCENE := preload("res://scenes/ship/ship_turret.tscn")
 
@@ -115,6 +119,10 @@ var _fire_control: FireControl = null
 ## Recoil delta-v the RCS still owes to cancel (accumulated shot kicks). Grows
 ## when weapons fire faster than the RCS can compensate; the leftover pushes the ship.
 var _recoil_debt: Vector2 = Vector2.ZERO
+## True while RMB is held: fire every group at once (a "fire everything" override).
+var _fire_all: bool = false
+## Per-group sustained-fire toggles from the HUD (group int -> bool).
+var _group_firing: Dictionary = {}
 
 
 func _ready() -> void:
@@ -153,6 +161,7 @@ func _build_turrets(design: ShipDesign) -> void:
 			turret.projectile_fired.disconnect(_on_turret_projectile_fired)
 		turret.queue_free()
 	_turrets.clear()
+	_group_firing.clear()
 	var cs := design.cell_size
 	# Capacitor modules add to every energy weapon's store, so they fire longer.
 	var capacitor_bonus := design.energy_capacity_total()
@@ -164,6 +173,7 @@ func _build_turrets(design: ShipDesign) -> void:
 			continue
 		turret.weapon = WeaponConfig.from_name(segment.weapon)
 		turret.capacitor_bonus = capacitor_bonus
+		turret.fire_group = segment.fire_group
 		turret.position = Vector2(segment.cell) * cs
 		turret.rotation = segment.facing_dir().angle() + PI / 2.0
 		add_child(turret)
@@ -172,6 +182,7 @@ func _build_turrets(design: ShipDesign) -> void:
 		_turrets.append(turret)
 	if _fire_control != null:
 		_fire_control.setup(self, _turrets)
+	weapons_changed.emit()
 
 
 ## Assemble the propulsion layout from a design: a main plume off every venting
@@ -320,8 +331,57 @@ func set_require_alignment(enabled: bool) -> void:
 
 ## Toggles the fire command on every mounted turret (each gates its own rate).
 func _set_firing(active: bool) -> void:
+	_fire_all = active
+	_update_turret_firing()
+
+
+## Sets sustained fire for one weapon group (from the HUD's per-group toggle).
+func set_group_firing(group: int, active: bool) -> void:
+	_group_firing[group] = active
+	_update_turret_firing()
+
+
+## Recomputes each turret's fire command: on when RMB fires all, or when its own
+## group is toggled on.
+func _update_turret_firing() -> void:
 	for turret in _turrets:
-		turret.firing = active
+		turret.firing = _fire_all or _group_firing.get(turret.fire_group, false)
+
+
+## Number of mounted weapons (turrets), for the HUD weapons list.
+func weapon_count() -> int:
+	return _turrets.size()
+
+
+## Display name of weapon `i` (its `WeaponConfig.weapon_name`).
+func weapon_label(i: int) -> String:
+	if i < 0 or i >= _turrets.size():
+		return ""
+	var w := _turrets[i].weapon
+	return w.weapon_name if w != null else "Weapon"
+
+
+## Firing group (1..N) weapon `i` belongs to.
+func weapon_group(i: int) -> int:
+	return _turrets[i].fire_group if i >= 0 and i < _turrets.size() else 1
+
+
+## Reassigns weapon `i` to firing `group` (from the HUD weapons list).
+func set_weapon_group(i: int, group: int) -> void:
+	if i < 0 or i >= _turrets.size():
+		return
+	_turrets[i].fire_group = group
+	_update_turret_firing()
+
+
+## Firing readiness 0..1 of weapon `i` (capacitor charge / cadence refill).
+func weapon_readiness(i: int) -> float:
+	return _turrets[i].readiness() if i >= 0 and i < _turrets.size() else 0.0
+
+
+## True when weapon `i` can fire right now (a beam is not locked out reloading).
+func weapon_ready(i: int) -> bool:
+	return _turrets[i].is_ready() if i >= 0 and i < _turrets.size() else false
 
 
 ## Relays a turret's bolt so the mode can place it in the world.

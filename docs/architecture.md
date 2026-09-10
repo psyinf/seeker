@@ -197,14 +197,31 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   design). The editor's **Combat** category lists each weapon as its own placeable
   part (`CATEGORIES` entries carry an optional 3rd element = preset name);
   `_select_part`/`_place` pass the selected weapon into `ShipDesign.place(kind,
-  cell, facing, weapon)`, which applies it only to WEAPON cells.
-- **Firing (RMB):** `Ship._ready` collects every `ShipTurret` child and connects
-  their `projectile_fired` and `recoil_applied`. **RMB** (in `_unhandled_input`)
-  toggles `firing` on all turrets via `_set_firing`; the ship relays each turret's
-  shot up through its own `projectile_fired`. `TacticalCombat` adds the bolt to
-  the **world** node (not the ship) so it flies free of the ship's transform. Each
-  frame the ship copies its `velocity` into every turret's `base_velocity`, so
-  bolts inherit the hull's momentum (Newtonian: a shot fired while moving drifts).
+  cell, facing, weapon, fire_group)`, which applies weapon+group only to WEAPON
+  cells. Keys **1–4** set the active firing group (and reassign the hovered weapon
+  cell); `SegmentedHull` draws the group digit on each weapon cell.
+- **Capacitor module:** `ShipSegment.Kind.CAPACITOR` (a Power-category part) adds
+  `ModuleStats.energy_capacity`; `ShipDesign.energy_capacity_total()` sums it and
+  `Ship._build_turrets` passes it to each energy weapon as `capacitor_bonus`, so
+  capacitors extend every beam's `_max_charge()`. (Reserved to also feed shields /
+  a shared power model — see game-design 4.7.)
+- **Firing & weapon groups:** `Ship._ready` collects every `ShipTurret` child and
+  connects their `projectile_fired` and `recoil_applied`. Each WEAPON cell has a
+  `fire_group` (1..4); `Ship._build_turrets` copies it onto the turret and emits
+  `weapons_changed`. Firing is the OR of two sources: **RMB** (in
+  `_unhandled_input`) sets `_fire_all` via `_set_firing` (fire everything), and the
+  command bar's group toggles call `set_group_firing(group, active)` into
+  `_group_firing`; `_update_turret_firing` sets each turret's `firing` from both.
+  The **`CommandBar`** shows four fixed **Fire G#** toggles (`group_fire_toggled`
+  → `Ship.set_group_firing`). The **`WeaponsPanel`** (top-right HUD,
+  `res://scenes/ui/weapons_panel.tscn`) lists one row per weapon — name, a group
+  `OptionButton` (→ `Ship.set_weapon_group`), and a charge `ProgressBar` — reading
+  `weapon_count`/`weapon_label`/`weapon_group`/`weapon_readiness`/`weapon_ready`
+  and rebuilding on `weapons_changed`. The ship relays each shot up through its own
+  `projectile_fired`; `TacticalCombat` adds the bolt to the **world** node (not the
+  ship) so it flies free of the ship's transform. Each frame the ship copies its
+  `velocity` into every turret's `base_velocity`, so bolts inherit the hull's
+  momentum (Newtonian: a shot fired while moving drifts).
 - **Recoil vs. RCS:** each turret's `recoil_applied` feeds `Ship.apply_recoil`,
   which adds the delta-v (`impulse / mass`) to `velocity` immediately and logs it
   as `_recoil_debt`. `_compensate_recoil` (each physics frame) has the RCS cancel

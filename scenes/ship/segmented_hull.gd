@@ -92,6 +92,7 @@ func _draw_segment(segment: ShipSegment, d: ShipDesign) -> void:
 				_draw_nozzle(center, segment.facing_dir(), half)
 		ShipSegment.Kind.WEAPON:
 			_draw_barrel(center, segment.facing_dir(), half)
+			_draw_group_label(center, segment.fire_group, half)
 		ShipSegment.Kind.REACTOR:
 			draw_circle(center, half * 0.5, Color("8dff9b"))
 		ShipSegment.Kind.CORE:
@@ -121,6 +122,15 @@ func _draw_nozzle(center: Vector2, dir: Vector2, half: float) -> void:
 ## A stubby barrel poking out of the cell's facing side.
 func _draw_barrel(center: Vector2, dir: Vector2, half: float) -> void:
 	draw_line(center, center + dir * (half + half * 0.7), Color("d94f4f"), half * 0.45)
+
+
+## The weapon's firing-group number, tucked in the cell's top-left corner so the
+## player can see how weapons are grouped in the editor.
+func _draw_group_label(center: Vector2, group: int, half: float) -> void:
+	var font := ThemeDB.fallback_font
+	var size := int(half * 0.9)
+	var pos := center + Vector2(-half * 0.85, -half * 0.25)
+	draw_string(font, pos, str(group), HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.95, 0.97, 1.0, 0.9))
 
 
 ## A small static marker for an RCS thruster mount so the maneuvering jets read on

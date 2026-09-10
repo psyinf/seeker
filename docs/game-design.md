@@ -163,7 +163,10 @@ cadence**):
   limited turn rate. Negligible recoil.
 - **Energy (beam)** — a continuous hitscan laser that burns whatever the barrel
   line touches within range; draws power instead of ammo, so **no recoil**. Damage
-  is per-second while the beam stays on target.
+  is per-second while the beam stays on target. **A laser fires as long as its
+  capacitor has charge**: firing drains the capacitor and it recharges while idle,
+  so a short burst keeps its remaining charge — but a fully drained capacitor
+  locks the beam out until it reloads to full (see the capacitor note below).
 
 Ready-made presets:
 
@@ -180,19 +183,38 @@ px/s of delta-v per second). Firing within that budget is fully absorbed; heavy
 or many weapons firing at once **overwhelm** the RCS and the leftover kick shoves
 the ship — a real trade-off between firepower and station-keeping.
 
+**Beam capacitor.** Energy weapons run on a capacitor rather than a fire rate: a
+laser **fires continuously for as long as the capacitor holds charge**, draining
+it at `discharge_rate` (max burst time = `capacitor / discharge_rate`) and
+recharging at `recharge_rate` while not firing. A short burst spends only a
+proportionate slice and keeps the rest; run it dry and the beam is locked out
+(`_beam_ready = false`) until the capacitor reloads to full. Mounting **Capacitor**
+modules raises the store (`energy_capacity_total()` → each weapon's `_max_charge()`),
+letting all energy weapons fire longer. The Weapons panel's charge bar shows the
+current level (green when ready, orange while reloading).
+
 **Choosing a weapon.** The ship editor's **Combat** category lists each weapon as
 a placeable part (Autocannon / Railgun / Missile / Laser); the chosen preset is
 stored per WEAPON cell (`ShipSegment.weapon`) and saved with the design, so a cell
 fires the weapon you picked for it.
 
-### 4.6 Weapon groups & firing control — concept
+### 4.6 Weapon groups & firing control
+
+> **Status: implemented (first pass, 2026-09-10).** Weapons carry a
+> `ShipSegment.fire_group` (a default group assignable in the editor with keys
+> 1–4, shown on the cell and saved with the design). In tactical combat a
+> **top-right Weapons panel** lists every mounted weapon with its name, a group
+> selector (1–4) for live reassignment, and a charge/readiness bar; the
+> **CommandBar** has four fixed **Fire G#** toggles that fire the selected groups
+> (RMB still fires everything). Items below the divider remain open.
 
 Right now the fire command is all-or-nothing: holding RMB fires every mounted
 turret at once (`Ship._set_firing` toggles `firing` on all turrets). That wastes
 scarce ammunition — a light autocannon can chatter away all encounter, but a
-railgun or missile rack should only fire when it counts. The idea is to let the
-player **sort weapons into groups and trigger each group independently**, so cheap
-weapons stay on while ammo-heavy ones are saved for a deliberate alpha strike.
+railgun or missile rack should only fire when it counts. The idea (now wired up)
+is to let the player **sort weapons into groups and trigger each group
+independently**, so cheap weapons stay on while ammo-heavy ones are saved for a
+deliberate alpha strike.
 
 - **Groups.** The player assigns each WEAPON cell to a firing group (e.g. Group 1
   = the always-on point-defense autocannons, Group 2 = the railgun, Group 3 = the

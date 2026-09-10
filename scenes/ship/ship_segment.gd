@@ -62,6 +62,13 @@ enum Facing { UP, RIGHT, DOWN, LEFT }
 		weapon = value
 		emit_changed()
 
+## For WEAPON cells, the firing group (1..N) whose trigger fires it, so weapons
+## can be triggered independently. Ignored by non-weapon kinds.
+@export_range(1, 8, 1) var fire_group: int = 1:
+	set(value):
+		fire_group = maxi(1, value)
+		emit_changed()
+
 
 ## Whether a kind's `facing` is meaningful (thruster exhaust, weapon barrel).
 static func is_directional(kind: Kind) -> bool:

@@ -40,7 +40,34 @@ duplication. New `class_name`s (WeaponConfig, Missile) added outside the editor
 needed the usual headless class-cache regen before running.
 ---
 
-## 2026-09-10 — Beam capacitor + Capacitor module  (branch: feat/ship-design-editor)
+## 2026-09-10 — Weapon groups & per-group firing  (branch: feat/ship-design-editor)
+
+**Did:** Implemented the documented weapon-groups idea (4.6). Each WEAPON cell has
+a `fire_group` (1..4) — a default assigned in the editor with keys **1–4**
+(reassigns the hovered weapon cell, drawn as a digit on the cell in
+`SegmentedHull`, saved with the design). In tactical combat a new **top-right
+`WeaponsPanel`** lists every mounted weapon with its name, a group `OptionButton`
+for live reassignment, and a charge/readiness `ProgressBar`. Firing is driven from
+the **`CommandBar`'s four fixed Fire G# toggles**: selecting groups fires every
+weapon assigned to them. The ship exposes per-weapon accessors
+(`weapon_count`/`weapon_label`/`weapon_group`/`set_weapon_group`/
+`weapon_readiness`/`weapon_ready`), `set_group_firing(group, active)`, and a
+`weapons_changed` signal; firing is the OR of `_fire_all` (RMB) and the per-group
+toggles via `_update_turret_firing`. Readiness comes from the turret's
+`readiness()`/`is_ready()` (beam capacitor charge or cadence cooldown).
+**Why:** Turns firepower into resource pacing (the core pillar) — hold the cheap
+autocannons while saving the railgun/missiles/laser for a deliberate strike —
+instead of dumping every barrel at once. The weapon *list* (not per-group bars)
+lets the player see and re-slot each weapon's group and charge individually.
+**Learned:** The `WeaponsPanel` reads the ship directly (like `FlightIndicators`)
+via a `ship_path` and rebuilds on `weapons_changed`; building rows in code (Label +
+OptionButton + ProgressBar) kept it a one-node scene. `OptionButton` item ids let
+the group map straight to the value (`get_selected_id`).
+**Follow-ups:** the 4.6 open items — default grouping, persisting live
+reassignment back to the design, fire-control tiers per group, mixed-cadence
+gauges, dedicated keybinds for the command-bar toggles.
+
+---
 
 **Did:** Gave energy weapons an **internal capacitor**: a laser now has
 `capacitor`/`discharge_rate`/`recharge_rate`, and the turret tracks `_charge` —

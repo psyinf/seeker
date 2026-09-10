@@ -63,6 +63,8 @@ var design: ShipDesign
 var selected_kind: ShipSegment.Kind = ShipSegment.Kind.HULL
 ## For WEAPON placement, which `WeaponConfig` preset the next weapon cell uses.
 var selected_weapon: StringName = &"autocannon"
+## For WEAPON placement, which firing group the next weapon cell joins (1..N).
+var selected_group: int = 1
 var place_facing: ShipSegment.Facing = ShipSegment.Facing.UP
 var hover_cell: Vector2i = Vector2i.ZERO
 var has_hover: bool = false
@@ -133,6 +135,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_rotate(1)
 			KEY_H:
 				_toggle_hull_design()
+			KEY_1, KEY_2, KEY_3, KEY_4:
+				_set_group(event.keycode - KEY_0)
 
 
 ## Zoom the view around the point under the cursor so it stays put.
@@ -171,7 +175,7 @@ func _place() -> void:
 	if existing != null and existing.fixed:
 		_set_status("Cell locked")
 		return
-	design.place(selected_kind, hover_cell, place_facing, selected_weapon)
+	design.place(selected_kind, hover_cell, place_facing, selected_weapon, selected_group)
 
 
 func _erase() -> void:
@@ -195,6 +199,19 @@ func _rotate(dir: int) -> void:
 	var segment: ShipSegment = design.get_segment_at(hover_cell) if has_hover else null
 	if segment != null and ShipSegment.is_directional(segment.kind):
 		segment.facing = place_facing
+	_hover.queue_redraw()
+
+
+## Sets the active firing group for weapon placement. If a weapon cell is under
+## the cursor, reassigns that cell's group instead (like R re-rotates a cell).
+func _set_group(group: int) -> void:
+	selected_group = group
+	var segment: ShipSegment = design.get_segment_at(hover_cell) if has_hover else null
+	if segment != null and segment.kind == ShipSegment.Kind.WEAPON and not segment.fixed:
+		segment.fire_group = group
+		_set_status("Weapon → Group %d" % group)
+	else:
+		_set_status("Placing Group %d" % group)
 	_hover.queue_redraw()
 
 
@@ -285,7 +302,7 @@ func _build_ui() -> void:
 	_add_button(bar, "Load", _on_load)
 	_add_button(bar, "Test Flight", _on_test_flight)
 	_status_label = Label.new()
-	var help := "LMB place  ·  RMB remove  ·  R rotate  ·  wheel zoom"
+	var help := "LMB place  ·  RMB remove  ·  R rotate  ·  1-4 weapon group  ·  wheel zoom"
 	if allow_hull_design:
 		help += "  ·  H hull-design"
 	_status_label.text = help

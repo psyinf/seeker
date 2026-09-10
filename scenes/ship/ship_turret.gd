@@ -71,6 +71,8 @@ signal recoil_applied(impulse: Vector2)
 
 ## True while the fire command is held; the turret shoots at its fire rate.
 var firing: bool = false
+## Which firing group this turret belongs to (set by the ship from the design).
+var fire_group: int = 1
 ## Platform velocity (px/s) added to each bolt so shots inherit ship momentum.
 ## Set by the ship every frame; leave zero for a static mount.
 var base_velocity: Vector2 = Vector2.ZERO
@@ -127,6 +129,24 @@ func _max_charge() -> float:
 	if weapon == null or weapon.kind != WeaponConfig.Kind.BEAM:
 		return 0.0
 	return weapon.capacitor + capacitor_bonus
+
+
+## Firing readiness 0..1 for the HUD: capacitor charge for beams, cooldown refill
+## for cadence weapons (1 = ready to fire now).
+func readiness() -> float:
+	if weapon != null and weapon.kind == WeaponConfig.Kind.BEAM:
+		var cap := _max_charge()
+		return _charge / cap if cap > 0.0 else 1.0
+	if fire_rate <= 0.0:
+		return 1.0
+	return clampf(1.0 - _cooldown * fire_rate, 0.0, 1.0)
+
+
+## False when the weapon can't fire right now (a beam reloading after a full drain).
+func is_ready() -> bool:
+	if weapon != null and weapon.kind == WeaponConfig.Kind.BEAM:
+		return _beam_ready
+	return true
 
 
 func _process(delta: float) -> void:
