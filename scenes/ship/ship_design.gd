@@ -38,6 +38,100 @@ func bounds() -> Rect2i:
 	return rect
 
 
+## The ship's outer silhouette: the convex hull of every cell's corners, in local
+## pixel space. Fewer than 3 points (empty/degenerate design) yields an empty array.
+func convex_hull() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	var half := cell_size * 0.5
+	for segment in segments:
+		if segment == null:
+			continue
+		var center := Vector2(segment.cell) * cell_size
+		points.append(center + Vector2(-half, -half))
+		points.append(center + Vector2(half, -half))
+		points.append(center + Vector2(half, half))
+		points.append(center + Vector2(-half, half))
+	if points.size() < 3:
+		return PackedVector2Array()
+	return Geometry2D.convex_hull(points)
+
+
+## The command cell that must survive, or null if the design has none.
+func core_segment() -> ShipSegment:
+	for segment in segments:
+		if segment != null and segment.kind == ShipSegment.Kind.CORE:
+			return segment
+	return null
+
+
+## Sum of every module's mass; drives acceleration and turn rate.
+func total_mass() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().mass
+	return total
+
+
+## Energy per second produced across all modules.
+func power_generation_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().power_gen
+	return total
+
+
+## Energy per second consumed across all modules.
+func power_draw_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().power_draw
+	return total
+
+
+## Net power: generation minus draw. Negative means the ship is over budget.
+func net_power() -> float:
+	return power_generation_total() - power_draw_total()
+
+
+## Sum of every module's internal armor; the ship's total structural HP.
+func total_hp() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().armor_hp
+	return total
+
+
+## Total cargo storage from all cargo holds.
+func cargo_capacity_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().cargo_capacity
+	return total
+
+
+## Combined survey/scan range from all sensors.
+func scan_range_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().scan_range
+	return total
+
+
+## Total minerals to build every module in the design.
+func build_cost_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().build_cost
+	return total
+
+
 ## A stock starter ship: a nose gun, a cockpit core, a reactor with hull wings,
 ## and a three-nozzle tail. Used when no design is assigned so there is always
 ## something to draw. Forward is -Y, so smaller Y is toward the nose.

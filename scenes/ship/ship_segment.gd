@@ -7,8 +7,24 @@ extends Resource
 ## renderer and, later, the flight model read this; the segment draws nothing
 ## itself. New part kinds get an entry in `Kind` (and the systems that care).
 
-## The part a cell represents. CORE/HULL are structural; the rest are functional.
-enum Kind { CORE, HULL, THRUSTER, WEAPON, REACTOR }
+## The part a cell represents. CORE is the command cell that must survive; HULL
+## and ARMOR are structural (ARMOR is the tough border/shell); the rest are
+## functional systems. New kinds append here (keep order stable so saved designs
+## keep their indices) and get a row in `ModuleStats.base_stats`.
+enum Kind {
+	CORE,
+	HULL,
+	THRUSTER,
+	WEAPON,
+	REACTOR,
+	DRONE_BAY,
+	CARGO_HOLD,
+	SHIELD,
+	SENSOR,
+	FUEL_TANK,
+	RADIATOR,
+	ARMOR,
+}
 
 ## Which way a directional part points. UP is -Y — the ship's forward.
 enum Facing { UP, RIGHT, DOWN, LEFT }
@@ -30,6 +46,11 @@ enum Facing { UP, RIGHT, DOWN, LEFT }
 	set(value):
 		facing = value
 		emit_changed()
+
+
+## This cell's baseline stat block (a fresh copy; modifiers may be layered on it).
+func stats() -> ModuleStats:
+	return ModuleStats.base_stats(kind)
 
 
 ## Unit vector the `facing` points along, in local space (UP = -Y = forward).

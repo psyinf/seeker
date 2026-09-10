@@ -78,7 +78,41 @@ Tactical combat is real-time; the strategic map and jump are the slower,
 deliberate layers. How control passes between them (and whether the map pauses
 combat) is still open.
 
+### 4.2 Ship modules
+
+The ship is a grid of cells; each cell is a **module** of one kind. Structural
+cells hold it together, functional cells give it capabilities. See the full
+catalog and base values in
+[module-design-questionnaire.md](module-design-questionnaire.md).
+
+- **Core** is always present and must survive — losing it ends the ship.
+- **Armor** is a special border/shell cell; interior cells are regular modules.
+- Every module shares a stat block: **mass, power draw, power generation,
+  internal armor (HP), build cost**, plus **crew** and **heat** (modelled but 0
+  for now). Module-specific extras add cargo, scan range, or fuel capacity.
+- Base stats live in a static table keyed by kind
+  ([module_stats.gd](../scenes/ship/module_stats.gd)); upgrades/modifiers layer
+  on top later.
+- The ship derives totals from its modules: total mass, net power (generation −
+  draw), total HP, cargo capacity, and scan range.
+
+| Kind | Role |
+|------|------|
+| Core | Command cell; must survive |
+| Hull | Structural filler |
+| Armor | Tough border/shell cell |
+| Thruster | Propulsion |
+| Weapon | Offense |
+| Reactor | Power generation |
+| Drone bay | Launches drones |
+| Cargo hold | Resource storage |
+| Shield generator | Defensive field |
+| Sensor / scanner | Survey/scan range |
+| Fuel tank | Jump fuel storage |
+| Radiator / heat sink | Heat management (inert until heat exists) |
+
 ## 5. World & setting
+
 
 - **Setting:** deep space, an unknown journey. Tone: lonely / contemplative with
   tense / survival beats.

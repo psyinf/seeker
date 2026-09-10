@@ -17,6 +17,33 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Ship module types + metrics  (branch: feat/ship-design-editor)
+
+**Did:** Extended the segmented-ship model with **module kinds and stats**. Grew
+`ShipSegment.Kind` from 5 to 12 (added DRONE_BAY, CARGO_HOLD, SHIELD, SENSOR,
+FUEL_TANK, RADIATOR, ARMOR — appended to keep saved indices stable). Added
+`ModuleStats` (a `Resource` baseline stat block: mass, power_draw, power_gen,
+armor_hp, build_cost, crew, heat, plus cargo/scan/fuel extras) with a static
+`base_stats(kind)` catalog that returns a fresh copy. `ShipSegment.stats()` looks
+its baseline up; `ShipDesign` now derives totals (`total_mass`, `net_power`,
+`total_hp`, `cargo_capacity_total`, `scan_range_total`, `build_cost_total`) and
+exposes `core_segment()`. Gave each new kind a color in `SegmentedHull`. Captured
+the design in [module-design-questionnaire.md](module-design-questionnaire.md) and
+a module section in [game-design.md](game-design.md).
+**Why:** The GDD's upgradable-ship pillar needs modules with real trade-offs
+(mass vs. power vs. armor vs. cost). Ran a questionnaire to lock the shared stat
+block and module roster. Core is the must-survive cell; armor is a special
+border/shell cell. Base values are tabled so upgrades/modifiers can layer on later.
+**Learned:** `base_stats` returns a *copy* on purpose so a future modifier system
+can mutate per-module values without corrupting the shared baseline. crew/heat are
+modelled but pinned to 0 until their systems exist — cheaper than retrofitting the
+stat block later. All base numbers are placeholders to tune once flight/combat
+consume them.
+**Follow-ups:** modifier/upgrade data model; wire aggregates into flight (mass →
+accel) and combat (HP, net power budget); armor auto-placement on the outer edge.
+
+---
+
 ## 2026-09-10 — Segmented ship design: data model + rendering  (branch: feat/ship-design-editor)
 
 **Did:** First PR of the ship-design feature — the **data model + renderer**, no

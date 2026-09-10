@@ -36,6 +36,12 @@ extends Node2D
 		outline_width = value
 		queue_redraw()
 
+## Fill color of the outer hull silhouette drawn beneath the cell tiles.
+@export var hull_color: Color = Color("2a3242"):
+	set(value):
+		hull_color = value
+		queue_redraw()
+
 var _fallback: ShipDesign
 
 
@@ -45,9 +51,23 @@ func _draw() -> void:
 		if _fallback == null:
 			_fallback = ShipDesign.create_default()
 		d = _fallback
+	_draw_hull(d)
 	for segment in d.segments:
 		if segment != null:
 			_draw_segment(segment, d.cell_size)
+
+
+## Fill and outline the design's convex hull as the ship's outer shape, beneath
+## the cell tiles so modules read as mounted on the hull.
+# TODO: place thrusters from this hull — main engines on the aftmost (max +Y)
+# hull edge, steering thrusters at the outer corners, each facing outward along
+# the hull normal, instead of relying on hand-authored THRUSTER cells.
+func _draw_hull(d: ShipDesign) -> void:
+	var hull := d.convex_hull()
+	if hull.size() < 3:
+		return
+	draw_colored_polygon(hull, hull_color)
+	draw_polyline(hull + PackedVector2Array([hull[0]]), outline_color, outline_width, true)
 
 
 func _draw_segment(segment: ShipSegment, cell_size: float) -> void:
@@ -97,5 +117,19 @@ func _color_for(kind: ShipSegment.Kind) -> Color:
 			return Color("6b7280")
 		ShipSegment.Kind.REACTOR:
 			return Color("2f7d55")
+		ShipSegment.Kind.DRONE_BAY:
+			return Color("b06fd0")
+		ShipSegment.Kind.CARGO_HOLD:
+			return Color("a8863f")
+		ShipSegment.Kind.SHIELD:
+			return Color("4f8fd9")
+		ShipSegment.Kind.SENSOR:
+			return Color("4fd9c4")
+		ShipSegment.Kind.FUEL_TANK:
+			return Color("c96b3c")
+		ShipSegment.Kind.RADIATOR:
+			return Color("9aa4b0")
+		ShipSegment.Kind.ARMOR:
+			return Color("5a6270")
 		_:
 			return Color("7b8798")
