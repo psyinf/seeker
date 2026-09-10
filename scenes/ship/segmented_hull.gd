@@ -161,5 +161,7 @@ func _color_for(kind: ShipSegment.Kind) -> Color:
 			return Color("9aa4b0")
 		ShipSegment.Kind.ARMOR:
 			return Color("5a6270")
+		ShipSegment.Kind.CAPACITOR:
+			return Color("c9b03a")
 		_:
 			return Color("7b8798")

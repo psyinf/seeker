@@ -40,7 +40,32 @@ duplication. New `class_name`s (WeaponConfig, Missile) added outside the editor
 needed the usual headless class-cache regen before running.
 ---
 
-## 2026-09-10 — Energy weapon + per-cell weapon choice in the builder  (branch: feat/ship-design-editor)
+## 2026-09-10 — Beam capacitor + Capacitor module  (branch: feat/ship-design-editor)
+
+**Did:** Gave energy weapons an **internal capacitor**: a laser now has
+`capacitor`/`discharge_rate`/`recharge_rate`, and the turret tracks `_charge` —
+draining while firing, refilling while idle. A full depletion latches
+`_beam_ready = false` until it reloads to full, so a short burst keeps its
+proportionate charge but an emptied cap must fully reload before firing again. The
+turret draws a charge ring around its base. Added a new **Capacitor** module kind
+(`ShipSegment.Kind.CAPACITOR`, appended to keep saved indices stable) with an
+`energy_capacity` stat; `ShipDesign.energy_capacity_total()` sums it and
+`Ship._build_turrets` feeds it to each energy weapon as `capacitor_bonus`, so
+capacitors make all lasers fire longer. Palette gains a Capacitor part (Power
+category) and the stats panel shows "Energy cap". Documented the **energy
+management** idea (budget power between drive / shields / energy weapons) as a new
+concept section (4.7).
+**Why:** Energy weapons needed a burst-and-reload rhythm instead of infinite fire,
+and the Capacitor part makes energy capacity a build choice — the first step
+toward the shared drive/shield/weapon power economy.
+**Learned:** New `enum Kind` values must be **appended** so existing saved designs
+keep their integer indices. The reload latch (require full recharge after a full
+drain) avoids beam flicker at empty without punishing short bursts.
+**Follow-ups:** implement weapon groups & firing control (documented 4.6); wire
+capacitors into shields and a real power/energy model (4.7); per-weapon module
+stats.
+
+---
 
 **Did:** Added a third weapon kind, **BEAM** (energy), with a `laser()` preset — a
 continuous hitscan: while firing, the turret ray-casts along its barrel up to

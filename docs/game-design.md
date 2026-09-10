@@ -185,6 +185,81 @@ a placeable part (Autocannon / Railgun / Missile / Laser); the chosen preset is
 stored per WEAPON cell (`ShipSegment.weapon`) and saved with the design, so a cell
 fires the weapon you picked for it.
 
+### 4.6 Weapon groups & firing control — concept
+
+Right now the fire command is all-or-nothing: holding RMB fires every mounted
+turret at once (`Ship._set_firing` toggles `firing` on all turrets). That wastes
+scarce ammunition — a light autocannon can chatter away all encounter, but a
+railgun or missile rack should only fire when it counts. The idea is to let the
+player **sort weapons into groups and trigger each group independently**, so cheap
+weapons stay on while ammo-heavy ones are saved for a deliberate alpha strike.
+
+- **Groups.** The player assigns each WEAPON cell to a firing group (e.g. Group 1
+  = the always-on point-defense autocannons, Group 2 = the railgun, Group 3 = the
+  missiles). A weapon belongs to exactly one group; a group can hold any mix.
+- **Independent triggers.** Each group has its own fire toggle/keybind. Firing a
+  group only pulls the trigger on its turrets, so you spend munitions only where
+  and when you choose — hold the autocannons on the target while you wait for the
+  railgun's charge, then tap Group 2 for the punch.
+- **Why it matters.** This turns firepower into a resource-pacing decision (the
+  core pillar): continuous light fire for pressure, hoarded heavy fire for the
+  moment it pays off — instead of dumping every barrel and running dry.
+
+**HUD: reload / capacitor bars.** Each group shows a readiness bar in the tactical
+HUD that doubles as its state gauge, reading from what the turrets already track:
+
+- **Ammo/kinetic weapons** — the bar is a **reload/cooldown** indicator: it drains
+  on firing and refills over the weapon's cadence (`ShipTurret._cooldown` /
+  `fire_rate`), so you can see at a glance when the group is ready to fire again.
+- **Energy weapons (beam)** — the same bar is a **capacitor charge** gauge, driven
+  by the turret's existing `_charge` / `_max_charge()` (boosted by mounted
+  **Capacitor** modules, `energy_capacity_total()`). It empties as the beam burns
+  and recharges when released; when fully drained the group is locked out until it
+  reloads to full (`_beam_ready`), which the bar should signal (e.g. greyed/red).
+
+Sharing one bar per group keeps the HUD readable while covering both firing
+models — "reload" and "capacitor" are the same idea (readiness to fire) shown for
+different weapon kinds.
+
+**Rough knobs / open items (TBD):**
+
+- Group count and default grouping (auto-group by weapon kind vs. fully manual).
+- Where grouping is authored — in the ship editor (persisted on the design) vs.
+  set live in tactical combat.
+- Whether fire-control tiers (Mk1–Mk3) apply per group or globally.
+- A group whose members have mixed cadence: show the slowest member, an average,
+  or per-weapon sub-bars.
+- Keybinds/UI: per-group toggle buttons on the `CommandBar` plus the bars, or a
+  dedicated weapons panel.
+
+### 4.7 Energy management — concept
+
+The **Capacitor** module already extends energy-weapon capacity
+(`energy_capacity_total()` feeds each beam turret's `_max_charge()`). The larger
+idea is to make stored energy a **shared reserve the player budgets between three
+draws** — mirroring the heat/armor tension but on the power axis:
+
+- **Drive** — thrust and RCS. Diverting power here means faster acceleration and
+  stronger recoil compensation / station-keeping.
+- **Shields** — recharge rate and cap of the defensive field (once shields exist).
+  More power = the shield regenerates faster and holds a bigger buffer.
+- **Energy weapons** — the beam capacitor pool. More power = lasers recharge
+  faster and sustain longer bursts before locking out.
+
+A reactor produces a **power budget**; capacitors add a **reserve buffer** that
+smooths spikes (a burst beam can draw from the buffer faster than the reactor
+refills it, then top back up when idle). The player sets a **priority / split**
+(e.g. an EVE-style three-way balance, or presets: *Run* = drive-biased, *Fight* =
+weapons-biased, *Turtle* = shields-biased). Over-committing one starves the
+others: dump everything into the beams and the drive sluggishly compensates
+recoil; pour it into shields and you can't outrun the fight.
+
+This ties the existing systems together — `net_power()` (reactor budget),
+`energy_capacity_total()` (buffer), beam `_charge`/`recharge_rate`, and the RCS
+recoil compensation — into one resource-pacing decision, reinforcing the
+"resource management is the core" pillar. Numbers, the split UI, and how shields
+plug in are TBD (blocked on a shield system and an explicit energy/power model).
+
 ## 5. World & setting
 
 
@@ -227,7 +302,9 @@ fires the weapon you picked for it.
 ## 9. UI / UX
 
 - **HUD (always visible):** energy level, hull/health, resource counts, and an
-  event log / alerts.
+  event log / alerts. In tactical combat, add **per-weapon-group readiness bars**
+  that double as reload (kinetic) / capacitor (energy) gauges — see
+  [4.6 Weapon groups & firing control](#46-weapon-groups--firing-control--concept).
 - **Menus (MVP):** main menu, pause, settings (to confirm), ship/upgrade view.
 - **Feedback:** _TBD_ (hit effects, alerts, sound cues).
 

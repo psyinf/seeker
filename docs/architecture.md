@@ -62,13 +62,14 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   grid of cells so they can later be built in-game and drive per-part physics.
   - `res://scenes/ship/ship_segment.gd` (`class_name ShipSegment extends
     Resource`, `@tool`) — one cell: a `kind` (CORE, HULL, ARMOR, THRUSTER,
-    WEAPON, REACTOR, DRONE_BAY, CARGO_HOLD, SHIELD, SENSOR, FUEL_TANK, RADIATOR),
-    an integer `cell` coordinate (+X right, +Y aft), and a `facing` for
-    directional parts (`facing_dir()` gives the local unit vector; UP = -Y =
-    forward). `stats()` returns its baseline `ModuleStats`; `is_directional(kind)`
-    flags kinds whose facing matters (thruster/weapon). A `fixed` cell (the core,
-    the initial drive) can't be removed or overwritten in the editor — the player
-    builds around it.
+    WEAPON, REACTOR, DRONE_BAY, CARGO_HOLD, SHIELD, SENSOR, FUEL_TANK, RADIATOR,
+    CAPACITOR), an integer `cell` coordinate (+X right, +Y aft), and a `facing`
+    for directional parts (`facing_dir()` gives the local unit vector; UP = -Y =
+    forward). For WEAPON cells a `weapon` `StringName` names the mounted
+    `WeaponConfig` preset. `stats()` returns its baseline `ModuleStats`;
+    `is_directional(kind)` flags kinds whose facing matters (thruster/weapon). A
+    `fixed` cell (the core, the initial drive) can't be removed or overwritten in
+    the editor — the player builds around it.
   - `res://scenes/ship/ship_design.gd` (`class_name ShipDesign extends Resource`,
     `@tool`) — the whole ship: `ship_class` (hull class name, e.g. "Nomad"),
     `cell_size` (px per cell) + `Array[ShipSegment]`, with `get_segment_at()`,
@@ -226,7 +227,15 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - **Beam (energy):** a BEAM weapon has no projectile. While firing, the turret
   ray-casts along its barrel up to `beam_range` (`_process_beam`), burns the first
   target hit for `damage × delta` (per-second), records the reach and draws the
-  beam in `_draw`. No recoil (energy, no ammo mass).
+  beam in `_draw`. No recoil (energy, no ammo mass). It runs on an **internal
+  capacitor**: `_charge` drains at `discharge_rate` while firing and refills at
+  `recharge_rate` while idle, capped at `_max_charge()` = `weapon.capacitor` +
+  `capacitor_bonus`. A full depletion latches `_beam_ready = false` until the
+  capacitor reloads to full, so a short burst keeps its remaining charge but an
+  empty one must fully reload before firing again. The turret draws a charge ring
+  around its base (dim while reloading). `Ship._build_turrets` sets
+  `capacitor_bonus` from `ShipDesign.energy_capacity_total()`, so mounting
+  **Capacitor** modules lets every energy weapon fire longer.
 - **Fire control (module, no hardware):** `res://scenes/ship/fire_control.gd`
   (`class_name FireControl`, `@tool`), a child `Node2D` of `Ship` with
   `top_level = true` so its overlay draws in world space. `Ship._ready` grabs it

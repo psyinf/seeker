@@ -27,6 +27,9 @@ extends Resource
 @export var scan_range: float = 0.0
 ## Fuel storage the module adds (fuel tanks only).
 @export var fuel_capacity: float = 0.0
+## Energy storage the module adds (capacitors only); extends energy-weapon
+## capacity now, and is the reserve a future energy system draws from.
+@export var energy_capacity: float = 0.0
 
 
 ## Baseline stats for a `ShipSegment.Kind`, as a fresh resource. Callers own the
@@ -92,6 +95,12 @@ static func base_stats(kind: ShipSegment.Kind) -> ModuleStats:
 			s.mass = 2.0
 			s.armor_hp = 40.0
 			s.build_cost = 12.0
+		ShipSegment.Kind.CAPACITOR:
+			s.mass = 1.0
+			s.power_draw = 1.0
+			s.armor_hp = 8.0
+			s.build_cost = 14.0
+			s.energy_capacity = 2.0
 		_:
 			pass
 	return s

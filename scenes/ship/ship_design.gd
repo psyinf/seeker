@@ -222,6 +222,16 @@ func build_cost_total() -> float:
 	return total
 
 
+## Combined energy storage from all capacitor modules; extends the ship's
+## energy-weapon capacity (and the future shared energy reserve).
+func energy_capacity_total() -> float:
+	var total := 0.0
+	for segment in segments:
+		if segment != null:
+			total += segment.stats().energy_capacity
+	return total
+
+
 ## True when a drive cell is an *extension* rather than a nozzle: another drive
 ## sits on its exhaust (facing) side, so this cell stacks in front of one that
 ## actually vents. The aft-most drive in a run is the nozzle; cells forward of it

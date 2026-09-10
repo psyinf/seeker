@@ -154,6 +154,8 @@ func _build_turrets(design: ShipDesign) -> void:
 		turret.queue_free()
 	_turrets.clear()
 	var cs := design.cell_size
+	# Capacitor modules add to every energy weapon's store, so they fire longer.
+	var capacitor_bonus := design.energy_capacity_total()
 	for segment in design.segments:
 		if segment == null or segment.kind != ShipSegment.Kind.WEAPON:
 			continue
@@ -161,6 +163,7 @@ func _build_turrets(design: ShipDesign) -> void:
 		if turret == null:
 			continue
 		turret.weapon = WeaponConfig.from_name(segment.weapon)
+		turret.capacitor_bonus = capacitor_bonus
 		turret.position = Vector2(segment.cell) * cs
 		turret.rotation = segment.facing_dir().angle() + PI / 2.0
 		add_child(turret)

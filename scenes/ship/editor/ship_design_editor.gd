@@ -43,6 +43,7 @@ const CATEGORIES := [
 	]],
 	["Power", [
 		[ShipSegment.Kind.REACTOR, "Reactor"],
+		[ShipSegment.Kind.CAPACITOR, "Capacitor"],
 		[ShipSegment.Kind.RADIATOR, "Radiator"],
 	]],
 	["Combat", [
@@ -350,6 +351,7 @@ func _refresh_stats() -> void:
 		"Mass: %.0f" % design.total_mass(),
 		"Net power: %+.0f" % design.net_power(),
 		"Hull HP: %.0f" % design.total_hp(),
+		"Energy cap: %.1f" % design.energy_capacity_total(),
 		"Cargo: %.0f" % design.cargo_capacity_total(),
 		"Scan: %.0f" % design.scan_range_total(),
 		"Cost: %.0f" % design.build_cost_total(),

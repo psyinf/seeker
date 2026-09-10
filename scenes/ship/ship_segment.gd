@@ -24,6 +24,7 @@ enum Kind {
 	FUEL_TANK,
 	RADIATOR,
 	ARMOR,
+	CAPACITOR,
 }
 
 ## Which way a directional part points. UP is -Y — the ship's forward.

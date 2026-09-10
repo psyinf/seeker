@@ -29,6 +29,14 @@ enum Kind {
 @export_range(0.0, 20.0, 0.1) var homing_turn_rate: float = 4.0
 ## Reach of a BEAM weapon, in pixels (hitscan). Ignored by other kinds.
 @export var beam_range: float = 700.0
+## Internal energy store of a BEAM weapon; firing drains it and it recharges while
+## idle. Max continuous beam time = capacitor / discharge_rate. Ignored by other
+## kinds. Ship-mounted Capacitor modules add to this at build time.
+@export var capacitor: float = 2.5
+## Energy/sec a BEAM weapon drains while firing.
+@export var discharge_rate: float = 1.0
+## Energy/sec a BEAM weapon's capacitor recharges while not firing.
+@export var recharge_rate: float = 0.7
 ## Tracer / body color of the spawned round (or the beam).
 @export var projectile_color: Color = Color("ffd36b")
 ## Round spawned per shot. Presets preload the matching bolt/missile scene.
@@ -116,5 +124,8 @@ static func laser() -> WeaponConfig:
 	w.ammo_mass = 0.0           # energy weapon: no recoil
 	w.fire_rate = 1.0           # unused for a continuous beam
 	w.beam_range = 720.0
+	w.capacitor = 2.5           # ~2.5s of continuous fire from a full charge
+	w.discharge_rate = 1.0
+	w.recharge_rate = 0.7       # ~3.6s to reload from empty
 	w.projectile_color = Color("ff5470")
 	return w

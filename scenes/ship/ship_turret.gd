@@ -83,6 +83,17 @@ var _cooldown: float = 0.0
 ## it reaches this frame (local pixels from the muzzle).
 var _beam_active: bool = false
 var _beam_length: float = 0.0
+## Extra capacitor energy granted by the ship's Capacitor modules; added to the
+## weapon's own store so mounting capacitors lets energy weapons fire longer.
+var capacitor_bonus: float = 0.0:
+	set(value):
+		capacitor_bonus = value
+		_charge = _max_charge() # top up so the added capacity starts full
+## Current capacitor charge (energy) of a BEAM weapon.
+var _charge: float = 0.0
+## False after a full depletion until the capacitor reloads to full again; blocks
+## firing so the beam can't stutter at empty.
+var _beam_ready: bool = true
 
 ## Physics layer targets sit on; beams ray-cast against it.
 const TARGET_LAYER := 4
@@ -106,6 +117,16 @@ func _sync_weapon() -> void:
 		return
 	fire_rate = weapon.fire_rate
 	projectile_speed = weapon.projectile_speed
+	_charge = _max_charge() # a fresh weapon starts fully charged
+	_beam_ready = true
+
+
+## Effective capacitor size: the weapon's own store plus the ship's capacitor
+## modules. Zero for non-beam weapons.
+func _max_charge() -> float:
+	if weapon == null or weapon.kind != WeaponConfig.Kind.BEAM:
+		return 0.0
+	return weapon.capacitor + capacitor_bonus
 
 
 func _process(delta: float) -> void:
@@ -162,13 +183,26 @@ func _fire() -> void:
 		recoil_applied.emit(-dir * recoil)
 
 
-## Runs the energy beam while firing: ray-casts along the barrel up to the
-## weapon's range, burns the first target hit (damage per second), and records the
-## reach so `_draw` can render the beam. No projectile, no recoil.
+## Runs the energy beam while firing: drains the capacitor, ray-casts along the
+## barrel up to the weapon's range, burns the first target hit (damage per
+## second), and records the reach so `_draw` can render the beam. The capacitor
+## recharges while idle and, once fully drained, must reload to full before firing
+## again (so a short burst keeps its remaining charge). No projectile, no recoil.
 func _process_beam(delta: float) -> void:
-	if not firing:
-		if _beam_active:
-			_beam_active = false
+	var cap := _max_charge()
+	var wants_fire := firing and _beam_ready and _charge > 0.0
+	if wants_fire:
+		_charge = maxf(0.0, _charge - weapon.discharge_rate * delta)
+		if _charge <= 0.0:
+			_beam_ready = false
+	elif _charge < cap:
+		_charge = minf(cap, _charge + weapon.recharge_rate * delta)
+		if _charge >= cap:
+			_beam_ready = true
+	if not wants_fire:
+		var need_redraw := _beam_active or _charge < cap
+		_beam_active = false
+		if need_redraw:
 			queue_redraw()
 		return
 	var muzzle := muzzle_position()
@@ -202,3 +236,11 @@ func _draw() -> void:
 		draw_line(start, tip, Color(weapon.projectile_color, 0.3), 6.0, true)
 		draw_line(start, tip, weapon.projectile_color, 2.0, true)
 		draw_circle(tip, 3.0, weapon.projectile_color)
+	# Capacitor charge ring around the base: full arc = charged, dim = reloading.
+	var cap := _max_charge()
+	if cap > 0.0:
+		var frac := clampf(_charge / cap, 0.0, 1.0)
+		var ring := weapon.projectile_color if _beam_ready else Color(0.55, 0.58, 0.62)
+		if frac > 0.0:
+			draw_arc(Vector2.ZERO, base_radius + 3.0, -PI / 2.0, -PI / 2.0 + TAU * frac,
+				28, Color(ring, 0.85), 2.0, true)
