@@ -118,12 +118,44 @@ func _ready() -> void:
 		_fire_control.setup(self, _turrets)
 
 
-## Render this ship using `design` (its SegmentedHull visual). Called when a
-## test flight starts from the ship editor.
+## Render this ship using `design` (its SegmentedHull visual) and rebuild its
+## propulsion FX from the design (main plumes off the drives, hull RCS mounts).
+## Called when a test flight starts from the ship editor.
 func apply_design(design: ShipDesign) -> void:
 	var hull := get_node_or_null("SegmentedHull") as SegmentedHull
 	if hull != null:
 		hull.design = design
+	var thrusters := get_node_or_null("ShipThrusters") as ShipThrusters
+	if thrusters != null:
+		thrusters.config = _build_propulsion(design)
+
+
+## Assemble the propulsion layout from a design: a main plume off every venting
+## drive nozzle (skipping extensions) plus the hull's fixed RCS mounts.
+func _build_propulsion(design: ShipDesign) -> PropulsionConfig:
+	var nozzles: Array[ThrusterNozzle] = []
+	var cs := design.cell_size
+	for segment in design.segments:
+		if segment == null or segment.kind != ShipSegment.Kind.THRUSTER:
+			continue
+		if design.is_drive_extension(segment):
+			continue
+		var dir := segment.facing_dir()
+		var n := ThrusterNozzle.new()
+		n.position = Vector2(segment.cell) * cs + dir * cs * 0.5
+		n.direction = dir
+		n.length = cs * 1.6
+		n.width = cs * 0.8
+		n.inner_color = Color(1.0, 0.96, 0.72)
+		n.outer_color = Color(1.0, 0.52, 0.15, 0.85)
+		n.channels = ThrusterNozzle.Channel.MAIN
+		nozzles.append(n)
+	for mount in design.rcs_mounts:
+		if mount != null:
+			nozzles.append(mount)
+	var cfg := PropulsionConfig.new()
+	cfg.nozzles = nozzles
+	return cfg
 
 
 func _unhandled_input(event: InputEvent) -> void:

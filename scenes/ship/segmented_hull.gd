@@ -55,6 +55,9 @@ func _draw() -> void:
 	for segment in d.segments:
 		if segment != null:
 			_draw_segment(segment, d)
+	for nozzle in d.rcs_mounts:
+		if nozzle != null:
+			_draw_rcs_mount(nozzle)
 
 
 ## Fill and outline the design's convex hull as the ship's outer shape, beneath
@@ -118,6 +121,20 @@ func _draw_nozzle(center: Vector2, dir: Vector2, half: float) -> void:
 ## A stubby barrel poking out of the cell's facing side.
 func _draw_barrel(center: Vector2, dir: Vector2, half: float) -> void:
 	draw_line(center, center + dir * (half + half * 0.7), Color("d94f4f"), half * 0.45)
+
+
+## A small static marker for an RCS thruster mount so the maneuvering jets read on
+## the hull even when not firing (the animated plume is drawn by ShipThrusters).
+func _draw_rcs_mount(nozzle: ThrusterNozzle) -> void:
+	var dir := nozzle.direction.normalized()
+	var side := Vector2(-dir.y, dir.x)
+	var points := PackedVector2Array([
+		nozzle.position + side * 3.0,
+		nozzle.position - side * 3.0,
+		nozzle.position + dir * 5.0,
+	])
+	draw_colored_polygon(points, Color("6fb7ff"))
+	draw_circle(nozzle.position, 1.5, Color("cfe6ff"))
 
 
 func _color_for(kind: ShipSegment.Kind) -> Color:

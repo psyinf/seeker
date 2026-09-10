@@ -34,6 +34,14 @@ extends Resource
 		footprint = value
 		emit_changed()
 
+## Fixed RCS thruster mounts for this hull class (maneuvering + retro jets). Part
+## of the hull-type definition like `footprint`, not player-placed: the renderer
+## draws a marker per mount and the ship fires them for rotation and the retro-burn.
+@export var rcs_mounts: Array[ThrusterNozzle] = []:
+	set(value):
+		rcs_mounts = value
+		emit_changed()
+
 
 ## The segment occupying `cell`, or null if that cell is empty.
 func get_segment_at(cell: Vector2i) -> ShipSegment:
@@ -243,6 +251,14 @@ static func create_default() -> ShipDesign:
 	for segment in design.segments:
 		fp.append(segment.cell)
 	design.footprint = fp
+	# Fixed maneuvering jets at the hull's side corners plus a nose-forward brake.
+	design.rcs_mounts = [
+		_rcs(Vector2(-33, -6), Vector2(-1, 0)),
+		_rcs(Vector2(33, -6), Vector2(1, 0)),
+		_rcs(Vector2(-33, 28), Vector2(-1, 0)),
+		_rcs(Vector2(33, 28), Vector2(1, 0)),
+		_rcs(Vector2(0, -55), Vector2(0, -1), ThrusterNozzle.Channel.TRANSLATION),
+	]
 	return design
 
 
@@ -253,3 +269,13 @@ static func _seg(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.F
 	segment.facing = facing
 	segment.fixed = fixed
 	return segment
+
+
+static func _rcs(pos: Vector2, dir: Vector2, channels := ThrusterNozzle.Channel.ROTATION | ThrusterNozzle.Channel.TRANSLATION) -> ThrusterNozzle:
+	var nozzle := ThrusterNozzle.new()
+	nozzle.position = pos
+	nozzle.direction = dir
+	nozzle.length = 12.0
+	nozzle.width = 5.0
+	nozzle.channels = channels
+	return nozzle

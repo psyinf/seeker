@@ -85,7 +85,10 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     to occupied cells when unset), so emptying a cell keeps its shell. Mutators
     `add_to_footprint`/`remove_from_footprint` (hull authoring), `is_in_footprint`
     (buildable test), and `clear_modules` (wipe the loadout, keep hull + fixed).
-    This is the save/load unit for a layout (`.tres`).
+    It also carries `rcs_mounts` (`Array[ThrusterNozzle]`) — the hull class's fixed
+    maneuvering/retro jet points (not player-placed); the renderer draws a marker
+    per mount and `Ship` fires them in flight. This is the save/load unit for a
+    layout (`.tres`).
   - `res://scenes/ship/module_stats.gd` (`class_name ModuleStats extends
     Resource`, `@tool`) — baseline stat block per kind (mass, power draw/gen,
     armor HP, build cost, crew/heat = 0 for now, plus cargo/scan/fuel extras).
@@ -93,9 +96,9 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   - `res://scenes/ship/segmented_hull.gd` (`class_name SegmentedHull extends
     Node2D`, `@tool`) — draws a `ShipDesign`: the convex-hull outer silhouette
     beneath a colored square per cell plus a kind accent (thruster nozzle, weapon
-    barrel, reactor/core glow). Pure rendering, no flight logic; falls back to
-    `create_default()` when its `design` is unset. It replaces `ShipHull` in
-    `ship.tscn` as the stock visual.
+    barrel, reactor/core glow) and a small static marker per `rcs_mounts` entry.
+    Pure rendering, no flight logic; falls back to `create_default()` when its
+    `design` is unset. It replaces `ShipHull` in `ship.tscn` as the stock visual.
   - **In-game editor:** `res://scenes/ship/editor/ship_design_editor.tscn` +
     `ship_design_editor.gd` (a `Node2D` controller) — grid editor:
     left-click places the palette-selected kind, right-click removes, `R` rotates

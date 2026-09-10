@@ -17,6 +17,28 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Per-hull RCS mounts (visible again)  (branch: feat/ship-design-editor)
+
+**Did:** The segmented hull had no thruster markers and the old `PropulsionConfig`
+default positioned RCS jets for the retired diamond hull, so maneuvering thrusters
+were invisible/detached. Added `ShipDesign.rcs_mounts` (`Array[ThrusterNozzle]`) as
+a fixed per-hull-type property (like `footprint`), seeded the Nomad's five jets
+(four side-corner rotation/brake jets + a nose-forward brake). `SegmentedHull`
+now draws a small static marker per mount (visible in the editor and in flight),
+and `Ship.apply_design` rebuilds the `ShipThrusters` `PropulsionConfig` from the
+design — main plumes off each venting drive nozzle plus the hull's RCS mounts — so
+the animated flames line up with the actual hull.
+**Why:** RCS points belong to the hull class, not a hull-independent default. Tying
+them to the design fixes both the scale mismatch and the "they vanished" bug, and
+keeps them authored per hull type.
+**Learned:** Deriving main-engine plume positions from the drive cells (skipping
+extensions via `is_drive_extension`) keeps FX aligned with the grid instead of
+hand-tuned offsets.
+**Follow-ups:** author RCS mounts in hull-design mode; per-segment flight stats
+still pending.
+
+---
+
 ## 2026-09-10 — Hull footprint: normal mode builds within the hull  (branch: feat/ship-design-editor)
 
 **Did:** Gave `ShipDesign` an explicit `footprint` (`Array[Vector2i]`) — the
