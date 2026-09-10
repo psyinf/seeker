@@ -8,6 +8,10 @@ extends Node2D
 ## bottom bar news/clears/saves/loads and starts a Test Flight. The `Hull` child
 ## (SegmentedHull) renders the design; `Hover` draws the cursor highlight. Hosted
 ## by `ModeManager` as the `SHIP_EDITOR` mode (also runs standalone).
+##
+## The palette is KSP-style: a left column of category tabs (Command, Structure,
+## Propulsion, Power, Combat, Utility) picks a category and only that category's
+## parts are listed beside it.
 
 const SAVE_PATH := "user://ship_designs/current.tres"
 const ZOOM_MIN := 0.3
@@ -19,20 +23,34 @@ const ZOOM_STEP := 1.1
 ## on to author new hull types by extending the footprint (H toggles it).
 @export var allow_hull_design: bool = true
 
-## Kinds shown in the palette, in order, with their labels.
-const PALETTE := [
-	[ShipSegment.Kind.CORE, "Core"],
-	[ShipSegment.Kind.HULL, "Hull"],
-	[ShipSegment.Kind.ARMOR, "Armor"],
-	[ShipSegment.Kind.THRUSTER, "Drive"],
-	[ShipSegment.Kind.WEAPON, "Weapon"],
-	[ShipSegment.Kind.REACTOR, "Reactor"],
-	[ShipSegment.Kind.DRONE_BAY, "Drone Bay"],
-	[ShipSegment.Kind.CARGO_HOLD, "Cargo Hold"],
-	[ShipSegment.Kind.SHIELD, "Shield"],
-	[ShipSegment.Kind.SENSOR, "Sensor"],
-	[ShipSegment.Kind.FUEL_TANK, "Fuel Tank"],
-	[ShipSegment.Kind.RADIATOR, "Radiator"],
+## Part palette grouped into KSP-style category tabs. Each entry is
+## `[category_label, [[kind, part_label], ...]]`; the tab strip picks a category
+## and only that category's parts are shown. Keep kinds listed once.
+const CATEGORIES := [
+	["Command", [
+		[ShipSegment.Kind.CORE, "Core"],
+		[ShipSegment.Kind.SENSOR, "Sensor"],
+	]],
+	["Structure", [
+		[ShipSegment.Kind.HULL, "Hull"],
+		[ShipSegment.Kind.ARMOR, "Armor"],
+	]],
+	["Propulsion", [
+		[ShipSegment.Kind.THRUSTER, "Drive"],
+		[ShipSegment.Kind.FUEL_TANK, "Fuel Tank"],
+	]],
+	["Power", [
+		[ShipSegment.Kind.REACTOR, "Reactor"],
+		[ShipSegment.Kind.RADIATOR, "Radiator"],
+	]],
+	["Combat", [
+		[ShipSegment.Kind.WEAPON, "Weapon"],
+		[ShipSegment.Kind.SHIELD, "Shield"],
+		[ShipSegment.Kind.DRONE_BAY, "Drone Bay"],
+	]],
+	["Utility", [
+		[ShipSegment.Kind.CARGO_HOLD, "Cargo Hold"],
+	]],
 ]
 
 var design: ShipDesign
@@ -48,7 +66,9 @@ var _hull_design: bool = false
 @onready var _hover: Node2D = $Hover
 @onready var _camera: Camera2D = $Camera2D
 
-var _palette_buttons: Array[Button] = []
+var _category_buttons: Array[Button] = []
+var _parts_box: VBoxContainer
+var selected_category: int = 0
 var _stats_label: Label
 var _status_label: Label
 
@@ -59,6 +79,7 @@ func _ready() -> void:
 	_hover.editor = self
 	design.changed.connect(_on_design_changed)
 	_build_ui()
+	_select_category(_category_of_kind(selected_kind))
 	_select_kind(selected_kind)
 	_refresh_stats()
 	queue_redraw()
@@ -209,19 +230,33 @@ func _build_ui() -> void:
 	var palette_panel := PanelContainer.new()
 	palette_panel.position = Vector2(12, 12)
 	layer.add_child(palette_panel)
-	var palette_box := VBoxContainer.new()
-	palette_panel.add_child(palette_box)
+	var palette_row := HBoxContainer.new()
+	palette_panel.add_child(palette_row)
+
+	# Left column: category tabs (KSP-style).
+	var tabs_box := VBoxContainer.new()
+	palette_row.add_child(tabs_box)
+	var tabs_title := Label.new()
+	tabs_title.text = "Category"
+	tabs_box.add_child(tabs_title)
+	for i in CATEGORIES.size():
+		var cat_button := Button.new()
+		cat_button.text = CATEGORIES[i][0]
+		cat_button.toggle_mode = true
+		cat_button.pressed.connect(_select_category.bind(i))
+		tabs_box.add_child(cat_button)
+		_category_buttons.append(cat_button)
+
+	palette_row.add_child(VSeparator.new())
+
+	# Right column: parts of the selected category (rebuilt on tab switch).
+	var parts_col := VBoxContainer.new()
+	palette_row.add_child(parts_col)
 	var title := Label.new()
 	title.text = "Modules"
-	palette_box.add_child(title)
-	for entry in PALETTE:
-		var kind: ShipSegment.Kind = entry[0]
-		var button := Button.new()
-		button.text = entry[1]
-		button.toggle_mode = true
-		button.pressed.connect(_select_kind.bind(kind))
-		palette_box.add_child(button)
-		_palette_buttons.append(button)
+	parts_col.add_child(title)
+	_parts_box = VBoxContainer.new()
+	parts_col.add_child(_parts_box)
 
 	var stats_panel := PanelContainer.new()
 	stats_panel.position = Vector2(get_viewport().get_visible_rect().size.x - 220, 12)
@@ -256,13 +291,41 @@ func _add_button(parent: Node, text: String, handler: Callable) -> void:
 	parent.add_child(button)
 
 
+## Index of the category tab whose part list contains `kind` (0 if none).
+func _category_of_kind(kind: ShipSegment.Kind) -> int:
+	for i in CATEGORIES.size():
+		for entry in CATEGORIES[i][1]:
+			if entry[0] == kind:
+				return i
+	return 0
+
+
+## Switch the active category tab and rebuild the parts list beside it.
+func _select_category(index: int) -> void:
+	selected_category = index
+	for i in _category_buttons.size():
+		_category_buttons[i].button_pressed = i == index
+	for child in _parts_box.get_children():
+		child.queue_free()
+	for entry in CATEGORIES[index][1]:
+		var kind: ShipSegment.Kind = entry[0]
+		var button := Button.new()
+		button.text = entry[1]
+		button.toggle_mode = true
+		button.button_pressed = kind == selected_kind
+		button.set_meta("kind", kind)
+		button.pressed.connect(_select_kind.bind(kind))
+		_parts_box.add_child(button)
+
+
 func _select_kind(kind: ShipSegment.Kind) -> void:
 	selected_kind = kind
 	# Drives vent aft by default so extensions stack toward the nose.
 	if kind == ShipSegment.Kind.THRUSTER:
 		place_facing = ShipSegment.Facing.DOWN
-	for i in _palette_buttons.size():
-		_palette_buttons[i].button_pressed = PALETTE[i][0] == kind
+	for child in _parts_box.get_children():
+		if child is Button:
+			child.button_pressed = child.get_meta("kind") == kind
 	_hover.queue_redraw()
 
 
