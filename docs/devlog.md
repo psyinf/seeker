@@ -17,6 +17,31 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Segmented ship design: data model + rendering  (branch: feat/ship-design-editor)
+
+**Did:** First PR of the ship-design feature — the **data model + renderer**, no
+editor UI yet. Added `ShipSegment` (a `Resource` cell: `kind` ∈ CORE/HULL/
+THRUSTER/WEAPON/REACTOR, integer `cell`, `facing`), `ShipDesign` (a `Resource`
+holding `cell_size` + `Array[ShipSegment]`, with `get_segment_at`/`bounds`/
+`create_default`), and `SegmentedHull` (a `@tool Node2D` that `_draw`s a design
+as colored grid tiles with kind accents — thruster nozzle, weapon barrel,
+reactor/core glow). Swapped `SegmentedHull` in for the diamond `ShipHull` in
+`ship.tscn` so the stock ship now flies as a segmented layout.
+**Why:** The GDD wants an upgradable ship built from modules; a grid/cell design
+(Cosmoteer/FTL-style) is the agreed model, with an in-game editor to come. Doing
+the data + rendering first (per the chunked-PR plan) gives a save/load-ready
+`ShipDesign` resource that the editor and the flight model both build on.
+**Learned:** Godot `Resource`s need `emit_changed()` in setters to notify; the
+renderer connects `design.changed` → `queue_redraw` for live editor updates, with
+a lazily-built `create_default()` fallback so there is always something to draw.
+Keeping segments as pure data (no self-drawing) keeps the renderer, the future
+editor, and the future physics model reading one source of truth.
+**Follow-ups:** PR #2 — in-game grid editor (place/remove/rotate cells, palette,
+save/load `.tres`). PR #3 — wire the design into flight/combat (per-segment mass
+& center-of-mass, thrusters from THRUSTER cells, weapons from WEAPON cells).
+Reconcile the old single-turret / `PropulsionConfig` FX with segment-derived
+mounts.
+
 ## 2026-09-10 — Off-screen target markers (edge-marker system)  (branch: feat/ship-topdown-view)
 
 **Did:** Added a first-class **edge-marker system** that pins directional markers

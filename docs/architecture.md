@@ -49,7 +49,28 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   as a child of `Ship`. It renders via `_draw` an elongated diamond (kite) whose
   longer tip is the nose, and inherits the ship's rotation. **Forward is -Y**
   (nose points up). Keeping the hull out of `ship.gd` keeps drawing and flight
-  logic decoupled (no god class).
+  logic decoupled (no god class). _The stock ship now uses the segmented hull
+  below instead; `ShipHull` remains as the simple single-piece primitive._
+- **Segmented ship design (data-driven, grid-based):** ships are authored as a
+  grid of cells so they can later be built in-game and drive per-part physics.
+  - `res://scenes/ship/ship_segment.gd` (`class_name ShipSegment extends
+    Resource`, `@tool`) — one cell: a `kind` (`CORE`, `HULL`, `THRUSTER`,
+    `WEAPON`, `REACTOR`), an integer `cell` coordinate (+X right, +Y aft), and a
+    `facing` for directional parts (`facing_dir()` gives the local unit vector;
+    UP = -Y = forward).
+  - `res://scenes/ship/ship_design.gd` (`class_name ShipDesign extends Resource`,
+    `@tool`) — the whole ship: `cell_size` (px per cell) + `Array[ShipSegment]`,
+    with `get_segment_at()`, `bounds()`, and `create_default()` (the stock nose-
+    gun / cockpit / reactor-with-wings / three-nozzle-tail starter). This is the
+    save/load unit for a layout (`.tres`).
+  - `res://scenes/ship/segmented_hull.gd` (`class_name SegmentedHull extends
+    Node2D`, `@tool`) — draws a `ShipDesign`: a colored square per cell plus a
+    kind accent (thruster nozzle, weapon barrel, reactor/core glow). Pure
+    rendering, no flight logic; falls back to `create_default()` when its
+    `design` is unset. It replaces `ShipHull` in `ship.tscn` as the stock visual.
+  - **Not yet wired to flight/combat** — mass, thrust, and weapons still come from
+    the existing `Ship`/turret/thruster systems. Per-segment physics and an
+    in-game grid editor are the planned follow-up PRs.
 - **Propulsion FX is a separate component:** `res://scenes/ship/ship_thrusters.gd`
   (`class_name ShipThrusters`, `@tool`), a child `Node2D` placed **before** the
   hull in the tree so plumes render behind it. Each frame it reads `Ship`'s

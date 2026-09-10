@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scenes/ship/ship.gd" id="1_ship"]
-[ext_resource type="PackedScene" path="res://scenes/ship/ship_hull.tscn" id="2_hull"]
+[ext_resource type="Script" path="res://scenes/ship/segmented_hull.gd" id="2_hull"]
 [ext_resource type="Script" path="res://scenes/ship/ship_thrusters.gd" id="3_thrusters"]
 [ext_resource type="PackedScene" path="res://scenes/ship/ship_turret.tscn" id="4_turret"]
 [ext_resource type="Script" path="res://scenes/ship/fire_control.gd" id="5_firectl"]
@@ -12,7 +12,8 @@ script = ExtResource("1_ship")
 [node name="ShipThrusters" type="Node2D" parent="."]
 script = ExtResource("3_thrusters")
 
-[node name="ShipHull" parent="." instance=ExtResource("2_hull")]
+[node name="SegmentedHull" type="Node2D" parent="."]
+script = ExtResource("2_hull")
 
 [node name="ShipTurret" parent="." instance=ExtResource("4_turret")]
 
