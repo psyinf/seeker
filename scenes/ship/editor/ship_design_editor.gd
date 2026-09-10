@@ -8,13 +8,16 @@ extends Node2D
 ## ModeManager comes later.
 
 const SAVE_PATH := "user://ship_designs/current.tres"
+const ZOOM_MIN := 0.3
+const ZOOM_MAX := 4.0
+const ZOOM_STEP := 1.1
 
 ## Kinds shown in the palette, in order, with their labels.
 const PALETTE := [
 	[ShipSegment.Kind.CORE, "Core"],
 	[ShipSegment.Kind.HULL, "Hull"],
 	[ShipSegment.Kind.ARMOR, "Armor"],
-	[ShipSegment.Kind.THRUSTER, "Thruster"],
+	[ShipSegment.Kind.THRUSTER, "Drive"],
 	[ShipSegment.Kind.WEAPON, "Weapon"],
 	[ShipSegment.Kind.REACTOR, "Reactor"],
 	[ShipSegment.Kind.DRONE_BAY, "Drone Bay"],
@@ -33,6 +36,7 @@ var has_hover: bool = false
 
 @onready var _hull: Node2D = $Hull
 @onready var _hover: Node2D = $Hover
+@onready var _camera: Camera2D = $Camera2D
 
 var _palette_buttons: Array[Button] = []
 var _stats_label: Label
@@ -73,11 +77,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				_erase()
 			MOUSE_BUTTON_WHEEL_UP:
-				_rotate(1)
+				_apply_zoom(ZOOM_STEP)
 			MOUSE_BUTTON_WHEEL_DOWN:
-				_rotate(-1)
+				_apply_zoom(1.0 / ZOOM_STEP)
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_R:
 		_rotate(1)
+
+
+## Zoom the view around the point under the cursor so it stays put.
+func _apply_zoom(factor: float) -> void:
+	var before := get_global_mouse_position()
+	var z := clampf(_camera.zoom.x * factor, ZOOM_MIN, ZOOM_MAX)
+	_camera.zoom = Vector2(z, z)
+	var after := get_global_mouse_position()
+	_camera.global_position += before - after
 
 
 func _update_hover() -> void:
@@ -92,12 +105,21 @@ func _update_hover() -> void:
 func _place() -> void:
 	if not has_hover:
 		return
+	var existing := design.get_segment_at(hover_cell)
+	if existing != null and existing.fixed:
+		_set_status("Cell locked")
+		return
 	design.place(selected_kind, hover_cell, place_facing)
 
 
 func _erase() -> void:
-	if has_hover:
-		design.remove_at(hover_cell)
+	if not has_hover:
+		return
+	var existing := design.get_segment_at(hover_cell)
+	if existing != null and existing.fixed:
+		_set_status("Cell locked")
+		return
+	design.remove_at(hover_cell)
 
 
 func _rotate(dir: int) -> void:
@@ -165,7 +187,7 @@ func _build_ui() -> void:
 	_add_button(bar, "Save", _on_save)
 	_add_button(bar, "Load", _on_load)
 	_status_label = Label.new()
-	_status_label.text = "LMB place  ·  RMB remove  ·  wheel/R rotate"
+	_status_label.text = "LMB place  ·  RMB remove  ·  R rotate  ·  wheel zoom"
 	bar.add_child(_status_label)
 
 
@@ -178,6 +200,9 @@ func _add_button(parent: Node, text: String, handler: Callable) -> void:
 
 func _select_kind(kind: ShipSegment.Kind) -> void:
 	selected_kind = kind
+	# Drives vent aft by default so extensions stack toward the nose.
+	if kind == ShipSegment.Kind.THRUSTER:
+		place_facing = ShipSegment.Facing.DOWN
 	for i in _palette_buttons.size():
 		_palette_buttons[i].button_pressed = PALETTE[i][0] == kind
 	_hover.queue_redraw()

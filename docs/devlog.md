@@ -17,6 +17,30 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Editor zoom, fixed cells, drive nozzle/extension  (branch: feat/ship-design-editor)
+
+**Did:** Three editor adaptations. (1) **Zoom** — mouse wheel zooms the camera
+(0.3×–4×) around the cursor; rotation moved to `R`. (2) **Fixed cells** — new
+`ShipSegment.fixed`; the default Nomad marks the core and center drive fixed, and
+the editor rejects removing/overwriting them ("Cell locked"). Fixed cells render
+with a gold outline. (3) **Drives are two derived types** — one "Drive" palette
+entry; `ShipDesign.is_drive_extension()` calls a drive a *nozzle* when nothing
+sits on its exhaust side and an *extension* when another drive does, so building
+forward of a nozzle extends it and building beside it starts a new column. Drives
+default to venting aft.
+**Why:** Matches the requested build rules: some parts are fixed but extendable,
+and a "drive" is really a nozzle plus optional extensions chosen by placement, not
+by the player picking a type.
+**Learned:** Zoom-around-cursor = sample `get_global_mouse_position()` before and
+after setting `Camera2D.zoom`, then shift the camera by the delta. Deriving
+nozzle-vs-extension from neighbors (via `facing_dir`) keeps the two "types" from
+ever desyncing with the layout.
+**Follow-ups:** optional adjacency/connectivity enforcement (new cells must touch
+the ship); wire the editor into `ModeManager`; thruster auto-placement + flight
+using the derived drives.
+
+---
+
 ## 2026-09-10 — In-game ship design editor  (branch: feat/ship-design-editor)
 
 **Did:** Added a standalone grid **editor** for `ShipDesign`

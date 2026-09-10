@@ -121,6 +121,35 @@ Naming convention: recon/explorer hulls take **navigator / guiding-light** names
 (Nomad, Pathfinder, Lodestar, Wayfarer); later combat and hauler classes use their
 own themes so a class name reads its role at a glance.
 
+### 4.4 Heat vs. armor (design tension) — concept
+
+Once **armor plating** and the **heat system** are both live, the ship's outer
+shell has to serve two jobs at once, and they fight each other:
+
+- **Armor wants coverage.** Protection comes from wrapping the hull in tough
+  plating — the more of the border you armor, the harder the ship is to crack.
+- **Heat wants exposure.** Reactors, thrusters, weapons and shields dump heat;
+  radiators shed it, but they need **exposed surface** (edge cells radiating to
+  space) to do so. Plating over that surface insulates the ship and chokes its
+  cooling.
+
+So armoring the shell trades away radiating surface. The intended consequences:
+
+- A **heavily armored** ship is tanky but runs **hot** — it must throttle
+  power-hungry systems, add interior radiators (mass/cost), or accept heat
+  build-up that degrades performance or forces cool-down pauses.
+- A **lightly armored** ship dissipates heat freely and can run its systems hard,
+  but its shell cracks quickly under fire.
+- **Radiators are a targetable weak point:** exposed to work, so they invite
+  enemy fire; losing them spikes the ship's heat.
+
+This turns hull layout into a real decision (where to armor, where to leave
+radiating gaps, how to route heat) rather than "armor everything". Rough knobs
+to model when the loops go live: armor plating reduces the effective radiating
+surface of the cells it covers; a ship's heat balance is `heat produced −
+heat dissipated`, and going over budget applies penalties (reduced power,
+accuracy, or forced throttling) rather than an instant fail. Numbers TBD.
+
 ## 5. World & setting
 
 

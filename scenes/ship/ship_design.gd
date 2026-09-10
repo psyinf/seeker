@@ -162,28 +162,41 @@ func build_cost_total() -> float:
 	return total
 
 
+## True when a drive cell is an *extension* rather than a nozzle: another drive
+## sits on its exhaust (facing) side, so this cell stacks in front of one that
+## actually vents. The aft-most drive in a run is the nozzle; cells forward of it
+## are extensions. The type is derived from placement, never chosen directly.
+func is_drive_extension(segment: ShipSegment) -> bool:
+	if segment == null or segment.kind != ShipSegment.Kind.THRUSTER:
+		return false
+	var ahead := get_segment_at(segment.cell + Vector2i(segment.facing_dir()))
+	return ahead != null and ahead.kind == ShipSegment.Kind.THRUSTER
+
+
 ## A stock starter ship: a nose gun, a cockpit core, a reactor with hull wings,
 ## and a three-nozzle tail. Used when no design is assigned so there is always
-## something to draw. Forward is -Y, so smaller Y is toward the nose.
+## something to draw. Forward is -Y, so smaller Y is toward the nose. The core and
+## the center drive are `fixed` — the player builds around them.
 static func create_default() -> ShipDesign:
 	var design := ShipDesign.new()
 	design.ship_class = "Nomad"
 	design.segments = [
 		_seg(ShipSegment.Kind.WEAPON, Vector2i(0, -2), ShipSegment.Facing.UP),
-		_seg(ShipSegment.Kind.CORE, Vector2i(0, -1)),
+		_seg(ShipSegment.Kind.CORE, Vector2i(0, -1), ShipSegment.Facing.UP, true),
 		_seg(ShipSegment.Kind.HULL, Vector2i(-1, 0)),
 		_seg(ShipSegment.Kind.REACTOR, Vector2i(0, 0)),
 		_seg(ShipSegment.Kind.HULL, Vector2i(1, 0)),
 		_seg(ShipSegment.Kind.THRUSTER, Vector2i(-1, 1), ShipSegment.Facing.DOWN),
-		_seg(ShipSegment.Kind.THRUSTER, Vector2i(0, 1), ShipSegment.Facing.DOWN),
+		_seg(ShipSegment.Kind.THRUSTER, Vector2i(0, 1), ShipSegment.Facing.DOWN, true),
 		_seg(ShipSegment.Kind.THRUSTER, Vector2i(1, 1), ShipSegment.Facing.DOWN),
 	]
 	return design
 
 
-static func _seg(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.UP) -> ShipSegment:
+static func _seg(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.UP, fixed := false) -> ShipSegment:
 	var segment := ShipSegment.new()
 	segment.kind = kind
 	segment.cell = cell
 	segment.facing = facing
+	segment.fixed = fixed
 	return segment

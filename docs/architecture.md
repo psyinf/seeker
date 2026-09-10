@@ -59,7 +59,9 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     an integer `cell` coordinate (+X right, +Y aft), and a `facing` for
     directional parts (`facing_dir()` gives the local unit vector; UP = -Y =
     forward). `stats()` returns its baseline `ModuleStats`; `is_directional(kind)`
-    flags kinds whose facing matters (thruster/weapon).
+    flags kinds whose facing matters (thruster/weapon). A `fixed` cell (the core,
+    the initial drive) can't be removed or overwritten in the editor — the player
+    builds around it.
   - `res://scenes/ship/ship_design.gd` (`class_name ShipDesign extends Resource`,
     `@tool`) — the whole ship: `ship_class` (hull class name, e.g. "Nomad"),
     `cell_size` (px per cell) + `Array[ShipSegment]`, with `get_segment_at()`,
@@ -67,8 +69,11 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     silhouette from cell corners), `core_segment()`, derived totals
     (`total_mass`, `power_generation_total`/`power_draw_total`/`net_power`,
     `total_hp`, `cargo_capacity_total`, `scan_range_total`, `build_cost_total`),
-    and `create_default()` (the stock **Nomad-class** starter). This is the
-    save/load unit for a layout (`.tres`).
+    `is_drive_extension()` (a drive cell is a nozzle unless another drive sits on
+    its exhaust side, in which case it's an extension — the type is derived from
+    placement, never chosen), and `create_default()` (the stock **Nomad-class**
+    starter, with core + center drive `fixed`). This is the save/load unit for a
+    layout (`.tres`).
   - `res://scenes/ship/module_stats.gd` (`class_name ModuleStats extends
     Resource`, `@tool`) — baseline stat block per kind (mass, power draw/gen,
     armor HP, build cost, crew/heat = 0 for now, plus cargo/scan/fuel extras).
@@ -81,12 +86,14 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
     `ship.tscn` as the stock visual.
   - **In-game editor:** `res://scenes/ship/editor/ship_design_editor.tscn` +
     `ship_design_editor.gd` (a `Node2D` controller) — standalone grid editor:
-    left-click places the palette-selected kind, right-click removes, wheel/R
-    rotates facing. A code-built UI shows a module palette, live derived stats,
-    and New/Clear/Save/Load (saves to `user://ship_designs/current.tres`). It
-    reuses `SegmentedHull` (child `Hull`) to render and `editor_hover.gd` (child
-    `Hover`) to highlight the cursor cell. Not yet wired into `ModeManager`; run
-    the scene directly to open it.
+    left-click places the palette-selected kind, right-click removes, `R` rotates
+    facing, the mouse wheel zooms the camera (around the cursor). Fixed cells
+    reject place/remove. The single **Drive** palette entry places thruster cells
+    whose nozzle/extension role is derived by placement. A code-built UI shows a
+    module palette, live derived stats, and New/Clear/Save/Load (saves to
+    `user://ship_designs/current.tres`). It reuses `SegmentedHull` (child `Hull`)
+    to render and `editor_hover.gd` (child `Hover`) to highlight the cursor cell.
+    Not yet wired into `ModeManager`; run the scene directly to open it.
   - **Not yet wired to flight/combat** — mass, thrust, and weapons still come from
     the existing `Ship`/turret/thruster systems. Per-segment physics is the
     planned follow-up.

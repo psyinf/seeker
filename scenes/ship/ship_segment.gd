@@ -47,6 +47,13 @@ enum Facing { UP, RIGHT, DOWN, LEFT }
 		facing = value
 		emit_changed()
 
+## Locked cells (core, the initial drive) can't be removed or overwritten in the
+## editor; the player builds around them instead.
+@export var fixed: bool = false:
+	set(value):
+		fixed = value
+		emit_changed()
+
 
 ## Whether a kind's `facing` is meaningful (thruster exhaust, weapon barrel).
 static func is_directional(kind: Kind) -> bool:

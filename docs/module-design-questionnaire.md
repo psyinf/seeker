@@ -87,4 +87,13 @@ Empty cells are 0.
   is auto-placed on the outer edge.
 - **Crew & heat systems:** both stats exist but are inert; design their loops
   before switching them on.
+- **Heat vs. armor tension (concept):** armor plating and heat dissipation
+  compete for the same outer surface — plating a border cell protects it but
+  insulates it, cutting the radiating surface radiators rely on. Heavily armored
+  ships should run hotter (throttle/interior radiators), lightly armored ones
+  cool freely but are fragile, and exposed radiators become a targetable weak
+  point. Model as: armor covering a cell reduces its effective radiating
+  surface, and net heat (produced − dissipated) over budget applies penalties
+  rather than an instant fail. See
+  [game-design.md](game-design.md) §4.4. Numbers TBD.
 - **Fuel capacity:** stored per fuel tank but not yet an aggregate/consumer.
