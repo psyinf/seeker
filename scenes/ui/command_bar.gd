@@ -21,7 +21,7 @@ const _FIRE_CONTROL_LABELS := [
 @onready var _align_thrust_button: Button = $Root/Bar/Margin/Buttons/AlignThrust
 
 var _fire_control_mode: int = 0
-var _align_thrust: bool = false
+var _align_thrust: bool = true
 
 
 func _ready() -> void:

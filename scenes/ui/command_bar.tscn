@@ -40,4 +40,4 @@ text = "Fire Control: None"
 
 [node name="AlignThrust" type="Button" parent="Root/Bar/Margin/Buttons"]
 layout_mode = 2
-text = "Align Thrust: Off"
+text = "Align Thrust: On"

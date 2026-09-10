@@ -31,10 +31,17 @@ signal projectile_fired(projectile: Node2D)
 @export_range(0.0, 90.0, 1.0) var tap_thrust_tolerance_deg: float = 20.0
 ## How long that forward thrust tap burns, in seconds.
 @export var tap_thrust_duration: float = 0.15
+## Force of the retro (backward) thrusters, fired by clicking near the retrograde
+## marker to bleed off speed without turning. Lower than thrust_force — retros
+## are less effective than the main engine.
+@export var retro_thrust_force: float = 400.0
+## Minimum burn a single tap on the retrograde marker fires, in seconds (holding
+## keeps burning until release or full stop).
+@export var retro_thrust_duration: float = 0.15
 ## When true, the main engine only fires once the nose is aligned with the aim
 ## direction: the ship turns to face the target first, then accelerates. When
 ## false, thrust is applied along the current heading even while still turning.
-@export var require_alignment: bool = false
+@export var require_alignment: bool = true
 ## Max heading error, in degrees, that still counts as aligned enough to thrust
 ## (only used when `require_alignment` is on).
 @export_range(0.0, 90.0, 1.0) var alignment_tolerance_deg: float = 5.0
@@ -78,6 +85,10 @@ var _lmb_held: bool = false
 var _hold_time: float = 0.0
 ## Remaining burn time on a click-to-nudge forward thrust tap (see tap_thrust_*).
 var _tap_thrust_time: float = 0.0
+## Remaining minimum burn from a tap on the retrograde marker (see retro_*).
+var _retro_thrust_time: float = 0.0
+## True while the retrograde marker is held: keep firing the retro thrusters.
+var _retro_engaged: bool = false
 ## A single click's turn is deferred by the double-click window so the first
 ## click of a double-click never rotates the ship.
 var _pending_turn: bool = false
@@ -169,7 +180,14 @@ func _physics_process(delta: float) -> void:
 	_apply_turning(delta)
 	main_throttle = 0.0
 	rcs_translation = Vector2.ZERO
-	if _lmb_held and _hold_time >= hold_thrust_delay:
+	if _retro_engaged or _retro_thrust_time > 0.0:
+		# Backward thrusters from the retrograde marker: shed speed, never turn.
+		if not _retro_burn(delta):
+			_retro_engaged = false
+			_retro_thrust_time = 0.0
+		elif _retro_thrust_time > 0.0:
+			_retro_thrust_time -= delta
+	elif _lmb_held and _hold_time >= hold_thrust_delay:
 		var heading := Vector2.UP.rotated(rotation)
 		if not require_alignment or absf(heading.angle_to(aim_direction)) <= deg_to_rad(alignment_tolerance_deg):
 			velocity += heading * (thrust_force / mass) * delta
@@ -191,6 +209,17 @@ func _physics_process(delta: float) -> void:
 ## Begins a Full Stop: a retro-burn that kills velocity using the ship's thrust.
 func full_stop() -> void:
 	_braking = true
+
+
+## Fires (true) or stops (false) the backward retro thrusters. Driven by the
+## flight indicators when the player uses the retrograde marker, so it decelerates
+## along the current velocity without ever turning the hull. A tap fires at least
+## retro_thrust_duration; holding keeps burning until release.
+func set_retro_burn(active: bool) -> void:
+	_retro_engaged = active
+	if active:
+		_retro_thrust_time = maxf(_retro_thrust_time, retro_thrust_duration)
+		_braking = false # manual input cancels a Full Stop
 
 
 ## Selects the active fire-control module (FireControl.Mode int) from the HUD.
@@ -227,6 +256,22 @@ func _apply_braking(delta: float) -> void:
 		_braking = false
 	else:
 		velocity -= velocity / speed * delta_v
+
+
+## Applies one frame of weaker retro thrust opposite the current velocity, no
+## turning — the backward thrusters fired by using the retrograde marker. Returns
+## false once the ship has come to rest.
+func _retro_burn(delta: float) -> bool:
+	var speed := velocity.length()
+	if speed <= 0.001:
+		return false
+	var delta_v := (retro_thrust_force / mass) * delta
+	rcs_translation = (-velocity / speed).rotated(-rotation)
+	if speed <= delta_v:
+		velocity = Vector2.ZERO
+		return false
+	velocity -= velocity / speed * delta_v
+	return true
 
 
 ## Steers the ship's rotation toward `aim_direction` with angular momentum:

@@ -17,6 +17,25 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Retrograde marker fires retro thrusters + align-thrust default on  (branch: feat/ship-topdown-view)
+
+**Did:** Clicking/holding the retrograde reticle now fires the ship's weaker
+**retro thrusters** (`retro_thrust_force` 400 vs main 900) opposite the velocity
+to bleed off speed, and **never turns the hull**. `FlightIndicators` owns the
+hit-test (`retro_click_radius`), consumes the click in `_input`, and emits
+`retro_burn_requested(active)`; `TacticalCombat` wires it to the new
+`Ship.set_retro_burn()`. A tap burns at least `retro_thrust_duration`; holding
+burns until release or full stop. Also flipped **Align Thrust to default on**
+(`require_alignment = true`, command-bar state + label match).
+**Why:** First attempts used an angular cone in the ship, but a click "on" the
+marker could fall just outside the cone and turn instead. Letting the marker
+consume the event up front makes it impossible for the ship to read it as a turn.
+**Learned:** Consuming input in `_input` + `set_input_as_handled()` runs before
+any node's `_unhandled_input`, so the ship (which steers from `_unhandled_input`)
+never sees the marker click — a clean way to give a HUD element first dibs without
+coupling gameplay to the view. Kept decoupled: indicators emit, the mode wires.
+**Follow-ups:** Expose retro force/duration on the HUD if it needs tuning.
+
 ## 2026-09-10 — Align-thrust HUD toggle + retrograde reticle  (branch: feat/ship-topdown-view)
 
 **Did:** Surfaced the `require_alignment` flight mode as an **Align Thrust** toggle

@@ -15,6 +15,7 @@ ship_path = NodePath("Ship")
 camera_path = NodePath("Camera2D")
 command_bar_path = NodePath("CommandBar")
 context_menu_path = NodePath("ContextMenu")
+indicators_path = NodePath("FlightIndicators")
 
 [node name="SpaceGrid" parent="." instance=ExtResource("4_grid")]
 camera_path = NodePath("../Camera2D")

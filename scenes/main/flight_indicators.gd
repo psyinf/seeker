@@ -4,6 +4,11 @@ extends Node2D
 ## velocity (prograde) arrows, plus a retrograde dot (where to point to stop).
 ## Reads the ship's public state; does not drive it.
 
+## Emitted when the player presses (true) / releases (false) the left mouse
+## button on the retrograde marker. The mode wires it to the ship so using the
+## marker fires the retro thrusters and never turns the hull.
+signal retro_burn_requested(active: bool)
+
 ## The ship whose heading/velocity to visualize.
 @export var ship_path: NodePath
 
@@ -32,15 +37,40 @@ extends Node2D
 @export var retro_spoke_length: float = 5.0
 ## Color of the retrograde reticle.
 @export var retro_color: Color = Color(1, 0.360784, 0.360784)
+## Radius around the retrograde marker, in pixels, within which a click counts
+## as "on the marker" and triggers a retro-burn instead of a turn.
+@export var retro_click_radius: float = 22.0
 
 @onready var ship := get_node_or_null(ship_path) as Ship
 @onready var _aim: VectorArrow = $AimArrow
 @onready var _velocity: VectorArrow = $VelocityArrow
 @onready var _retro: Node2D = $RetroMarker
 
+## True while a left-button press that landed on the retrograde marker is held.
+var _retro_pressed: bool = false
+
 
 func _ready() -> void:
 	_build_retro_marker()
+
+
+## Claims left-clicks that land on the retrograde marker before they reach the
+## ship (which handles _unhandled_input), so using the marker only ever fires a
+## retro-burn — never a turn. Runs in _input to consume the event up front.
+func _input(event: InputEvent) -> void:
+	if ship == null or not (event is InputEventMouseButton):
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if event.pressed:
+		if _retro.visible and get_global_mouse_position().distance_to(_retro.global_position) <= retro_click_radius:
+			_retro_pressed = true
+			get_viewport().set_input_as_handled()
+			retro_burn_requested.emit(true)
+	elif _retro_pressed:
+		_retro_pressed = false
+		get_viewport().set_input_as_handled()
+		retro_burn_requested.emit(false)
 
 
 func _process(_delta: float) -> void:
