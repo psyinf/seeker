@@ -13,6 +13,9 @@ signal context_menu_requested
 ## world so it keeps its own momentum instead of moving with the ship.
 signal projectile_fired(projectile: Node2D)
 
+## Turret spawned at each WEAPON cell when a design is applied.
+const TURRET_SCENE := preload("res://scenes/ship/ship_turret.tscn")
+
 @export_group("Flight")
 ## Ship mass. Force is divided by mass for both thrust and turning, so heavier
 ## ships need proportionally more thrust/torque for the same responsiveness —
@@ -128,6 +131,32 @@ func apply_design(design: ShipDesign) -> void:
 	var thrusters := get_node_or_null("ShipThrusters") as ShipThrusters
 	if thrusters != null:
 		thrusters.config = _build_propulsion(design)
+	_build_turrets(design)
+
+
+## Replace the ship's turrets with one per WEAPON cell in the design, so every
+## weapon the player places actually fires. Each turret sits on its cell, starts
+## aimed along the barrel's facing, and is wired into fire control.
+func _build_turrets(design: ShipDesign) -> void:
+	for turret in _turrets:
+		if turret.projectile_fired.is_connected(_on_turret_projectile_fired):
+			turret.projectile_fired.disconnect(_on_turret_projectile_fired)
+		turret.queue_free()
+	_turrets.clear()
+	var cs := design.cell_size
+	for segment in design.segments:
+		if segment == null or segment.kind != ShipSegment.Kind.WEAPON:
+			continue
+		var turret := TURRET_SCENE.instantiate() as ShipTurret
+		if turret == null:
+			continue
+		turret.position = Vector2(segment.cell) * cs
+		turret.rotation = segment.facing_dir().angle() + PI / 2.0
+		add_child(turret)
+		turret.projectile_fired.connect(_on_turret_projectile_fired)
+		_turrets.append(turret)
+	if _fire_control != null:
+		_fire_control.setup(self, _turrets)
 
 
 ## Assemble the propulsion layout from a design: a main plume off every venting
