@@ -38,8 +38,31 @@ overwhelm it" brief.
 `_steer()` override reuses the swept collision/damage/despawn with no
 duplication. New `class_name`s (WeaponConfig, Missile) added outside the editor
 needed the usual headless class-cache regen before running.
-**Follow-ups:** let the ship editor pick a weapon per WEAPON cell (replace the
-round-robin preset assignment); ammo/heat/power hooks for weapons; enemy fire.
+---
+
+## 2026-09-10 — Energy weapon + per-cell weapon choice in the builder  (branch: feat/ship-design-editor)
+
+**Did:** Added a third weapon kind, **BEAM** (energy), with a `laser()` preset — a
+continuous hitscan: while firing, the turret ray-casts along its barrel up to
+`beam_range`, burns the first target for `damage × delta` (per-second) and draws
+the beam; no recoil (no ammo mass). Made the weapon selectable **per WEAPON cell
+in the editor**: `ShipSegment` now stores a `weapon` `StringName` (default
+`autocannon`, saved with the design), `WeaponConfig.from_name()` maps a preset
+name → config, `ShipDesign.place()` takes an optional `weapon`, and the editor's
+**Combat** category lists Autocannon / Railgun / Missile / Laser as separate
+parts (palette entries gained an optional 3rd element = preset name; `_select_kind`
+became `_select_part(kind, weapon)`). `Ship._build_turrets` now reads each cell's
+`weapon` instead of the round-robin stopgap.
+**Why:** Wanted a power-based weapon and, more importantly, real per-cell weapon
+choice in the builder so a design fires what you placed — replacing the temporary
+cycling assignment.
+**Learned:** Keeping the choice a serializable `StringName` on the segment (live
+stats resolved via `from_name` at build time) avoids embedding a `WeaponConfig`
+sub-resource per cell in the save while still letting the code own balance values.
+The beam reuses the turret's existing slew/aim; only the fire path branches.
+**Follow-ups:** per-weapon module stats (mass/power/heat) instead of the shared
+WEAPON block; beam power draw once energy is live; show the selected weapon on the
+cell hover/tooltip.
 
 ---
 

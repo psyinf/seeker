@@ -54,6 +54,13 @@ enum Facing { UP, RIGHT, DOWN, LEFT }
 		fixed = value
 		emit_changed()
 
+## For WEAPON cells, which weapon preset it mounts (see `WeaponConfig.from_name`):
+## `autocannon`, `railgun`, `missile` or `laser`. Ignored by non-weapon kinds.
+@export var weapon: StringName = &"autocannon":
+	set(value):
+		weapon = value
+		emit_changed()
+
 
 ## Whether a kind's `facing` is meaningful (thruster exhaust, weapon barrel).
 static func is_directional(kind: Kind) -> bool:

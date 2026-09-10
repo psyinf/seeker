@@ -10,6 +10,7 @@ extends Resource
 enum Kind {
 	PROJECTILE, ## Straight bolt; recoil = muzzle speed × ammo mass.
 	GUIDED,     ## Homing missile; soft launch, negligible recoil.
+	BEAM,       ## Continuous energy beam (hitscan); draws power, no recoil.
 }
 
 ## Display name for the HUD / loadout screens.
@@ -26,19 +27,36 @@ enum Kind {
 @export_range(0.1, 30.0, 0.1) var fire_rate: float = 12.0
 ## Homing agility for GUIDED weapons, in radians/second. Ignored for projectiles.
 @export_range(0.0, 20.0, 0.1) var homing_turn_rate: float = 4.0
-## Tracer / body color of the spawned round.
+## Reach of a BEAM weapon, in pixels (hitscan). Ignored by other kinds.
+@export var beam_range: float = 700.0
+## Tracer / body color of the spawned round (or the beam).
 @export var projectile_color: Color = Color("ffd36b")
 ## Round spawned per shot. Presets preload the matching bolt/missile scene.
 @export var projectile_scene: PackedScene
 
 
 ## Recoil impulse of a single shot, in momentum units (px/s × mass). Projectile
-## recoil is the round's momentum leaving the barrel; guided weapons launch soft,
-## so their recoil is negligible.
+## recoil is the round's momentum leaving the barrel; guided and energy weapons
+## launch soft / carry no ammo mass, so their recoil is negligible.
 func recoil() -> float:
-	if kind == Kind.GUIDED:
+	if kind != Kind.PROJECTILE:
 		return 0.0
 	return projectile_speed * ammo_mass
+
+
+## The preset config for a name (see the factories below). Unknown names fall
+## back to the autocannon. Keeps weapon choice a small serializable `StringName`
+## on the ship segment while the live stats stay in code.
+static func from_name(preset: StringName) -> WeaponConfig:
+	match preset:
+		&"railgun":
+			return railgun()
+		&"missile":
+			return missile()
+		&"laser":
+			return laser()
+		_:
+			return autocannon()
 
 
 ## Infrequent, hard-hitting projectile: massive muzzle speed and impact damage at
@@ -83,4 +101,20 @@ static func missile() -> WeaponConfig:
 	w.homing_turn_rate = 4.0
 	w.projectile_color = Color("ff9f68")
 	w.projectile_scene = preload("res://scenes/ship/missile.tscn")
+	return w
+
+
+## Energy beam: a continuous hitscan laser that burns whatever the barrel line
+## touches within range. Draws power instead of ammo, so it has no recoil; damage
+## is per-second while the beam stays on target.
+static func laser() -> WeaponConfig:
+	var w := WeaponConfig.new()
+	w.weapon_name = "Laser"
+	w.kind = Kind.BEAM
+	w.projectile_speed = 3000.0 # effectively instant; only the fire-control lead reads it
+	w.damage = 6.0              # damage per second on target
+	w.ammo_mass = 0.0           # energy weapon: no recoil
+	w.fire_rate = 1.0           # unused for a continuous beam
+	w.beam_range = 720.0
+	w.projectile_color = Color("ff5470")
 	return w

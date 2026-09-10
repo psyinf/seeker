@@ -181,14 +181,22 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   (opposite the muzzle) for the ship to absorb.
 - **Weapons are data:** `res://scenes/ship/weapon_config.gd` (`class_name
   WeaponConfig extends Resource`, `@tool`) — a weapon's stat block: `kind`
-  (`PROJECTILE`/`GUIDED`), `projectile_speed`, `damage`, `ammo_mass`,
-  `fire_rate` (cadence), `homing_turn_rate`, `projectile_color` and
+  (`PROJECTILE`/`GUIDED`/`BEAM`), `projectile_speed`, `damage`, `ammo_mass`,
+  `fire_rate` (cadence), `homing_turn_rate`, `beam_range`, `projectile_color` and
   `projectile_scene`. `recoil()` = `projectile_speed × ammo_mass` for
-  projectiles, 0 for guided. Static presets `railgun()` (slow cadence, huge speed
-  + damage, heavy recoil), `autocannon()` (fast cadence, small damage, light
-  recoil) and `missile()` (guided, homing, heavy warhead). `Ship._build_turrets`
-  cycles the three presets across a design's WEAPON cells (a first-pass stand-in
-  until the editor lets the player pick a weapon per cell).
+  projectiles, 0 for guided/beam. Static presets `railgun()` (slow cadence, huge
+  speed + damage, heavy recoil), `autocannon()` (fast cadence, small damage, light
+  recoil), `missile()` (guided, homing, heavy warhead) and `laser()` (BEAM,
+  continuous hitscan, per-second damage, no recoil). `from_name(StringName)` maps
+  a preset name → config, so the choice serializes as a small `StringName` on the
+  segment while live stats stay in code. `Ship._build_turrets` builds each turret
+  from its cell's `ShipSegment.weapon`.
+- **Choosing a weapon:** each WEAPON cell stores its preset in
+  `ShipSegment.weapon` (a `StringName`, default `autocannon`, saved with the
+  design). The editor's **Combat** category lists each weapon as its own placeable
+  part (`CATEGORIES` entries carry an optional 3rd element = preset name);
+  `_select_part`/`_place` pass the selected weapon into `ShipDesign.place(kind,
+  cell, facing, weapon)`, which applies it only to WEAPON cells.
 - **Firing (RMB):** `Ship._ready` collects every `ShipTurret` child and connects
   their `projectile_fired` and `recoil_applied`. **RMB** (in `_unhandled_input`)
   toggles `firing` on all turrets via `_set_firing`; the ship relays each turret's
@@ -215,6 +223,10 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   nearest target (`intersect_shape` on the targets layer within `seek_radius`),
   bending `_velocity` toward it at `turn_rate` while holding `cruise_speed`.
   Reuses the base sweep/damage/despawn; the turret sets its speed/turn/damage.
+- **Beam (energy):** a BEAM weapon has no projectile. While firing, the turret
+  ray-casts along its barrel up to `beam_range` (`_process_beam`), burns the first
+  target hit for `damage × delta` (per-second), records the reach and draws the
+  beam in `_draw`. No recoil (energy, no ammo mass).
 - **Fire control (module, no hardware):** `res://scenes/ship/fire_control.gd`
   (`class_name FireControl`, `@tool`), a child `Node2D` of `Ship` with
   `top_level = true` so its overlay draws in world space. `Ship._ready` grabs it

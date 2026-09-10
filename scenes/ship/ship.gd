@@ -116,10 +116,6 @@ var _fire_control: FireControl = null
 ## when weapons fire faster than the RCS can compensate; the leftover pushes the ship.
 var _recoil_debt: Vector2 = Vector2.ZERO
 
-## Weapon presets cycled across a design's WEAPON cells so a built ship shows a
-## mix of the defined weapons until per-cell weapon choice exists in the editor.
-const WEAPON_PRESETS := [&"railgun", &"autocannon", &"missile"]
-
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -158,15 +154,13 @@ func _build_turrets(design: ShipDesign) -> void:
 		turret.queue_free()
 	_turrets.clear()
 	var cs := design.cell_size
-	var weapon_index := 0
 	for segment in design.segments:
 		if segment == null or segment.kind != ShipSegment.Kind.WEAPON:
 			continue
 		var turret := TURRET_SCENE.instantiate() as ShipTurret
 		if turret == null:
 			continue
-		turret.weapon = _make_weapon(WEAPON_PRESETS[weapon_index % WEAPON_PRESETS.size()])
-		weapon_index += 1
+		turret.weapon = WeaponConfig.from_name(segment.weapon)
 		turret.position = Vector2(segment.cell) * cs
 		turret.rotation = segment.facing_dir().angle() + PI / 2.0
 		add_child(turret)
@@ -175,17 +169,6 @@ func _build_turrets(design: ShipDesign) -> void:
 		_turrets.append(turret)
 	if _fire_control != null:
 		_fire_control.setup(self, _turrets)
-
-
-## Builds one of the named weapon presets (see `WeaponConfig`).
-func _make_weapon(preset: StringName) -> WeaponConfig:
-	match preset:
-		&"railgun":
-			return WeaponConfig.railgun()
-		&"missile":
-			return WeaponConfig.missile()
-		_:
-			return WeaponConfig.autocannon()
 
 
 ## Assemble the propulsion layout from a design: a main plume off every venting

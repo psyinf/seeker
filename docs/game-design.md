@@ -152,7 +152,7 @@ accuracy, or forced throttling) rather than an instant fail. Numbers TBD.
 
 ### 4.5 Weapons — first pass
 
-Weapons are data-driven stat blocks (`WeaponConfig`) mounted on turrets. Two
+Weapons are data-driven stat blocks (`WeaponConfig`) mounted on turrets. Three
 firing models exist, sharing the same properties (**speed, damage, recoil,
 cadence**):
 
@@ -161,6 +161,9 @@ cadence**):
   (the round's momentum leaving the barrel).
 - **Guided** — missiles that soft-launch and home on the nearest target at a
   limited turn rate. Negligible recoil.
+- **Energy (beam)** — a continuous hitscan laser that burns whatever the barrel
+  line touches within range; draws power instead of ammo, so **no recoil**. Damage
+  is per-second while the beam stays on target.
 
 Ready-made presets:
 
@@ -169,6 +172,7 @@ Ready-made presets:
 | **Railgun** | Projectile | ~1/s | massive | massive | heavy |
 | **Autocannon** | Projectile | high | moderate | small | light |
 | **Missile** | Guided | slow | slow (homes) | heavy | none |
+| **Laser** | Energy/beam | continuous | instant | moderate/s | none |
 
 **Recoil vs. RCS.** Each projectile shot kicks the ship opposite the muzzle. The
 RCS continuously fights to null the accumulated kick (`rcs_recoil_compensation`,
@@ -176,8 +180,10 @@ px/s of delta-v per second). Firing within that budget is fully absorbed; heavy
 or many weapons firing at once **overwhelm** the RCS and the leftover kick shoves
 the ship — a real trade-off between firepower and station-keeping.
 
-_First pass:_ presets are cycled across a design's WEAPON cells (railgun →
-autocannon → missile) until the editor lets the player pick a weapon per cell.
+**Choosing a weapon.** The ship editor's **Combat** category lists each weapon as
+a placeable part (Autocannon / Railgun / Missile / Laser); the chosen preset is
+stored per WEAPON cell (`ShipSegment.weapon`) and saved with the design, so a cell
+fires the weapon you picked for it.
 
 ## 5. World & setting
 

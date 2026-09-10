@@ -52,8 +52,9 @@ func get_segment_at(cell: Vector2i) -> ShipSegment:
 
 
 ## Place `kind` at `cell`, replacing any segment already there. Returns the
-## segment. Used by the editor; emits `changed` so views refresh.
-func place(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.UP) -> ShipSegment:
+## segment. `weapon` (a `WeaponConfig` preset name) is applied only to WEAPON
+## cells. Used by the editor; emits `changed` so views refresh.
+func place(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.UP, weapon: StringName = &"") -> ShipSegment:
 	var segment := get_segment_at(cell)
 	if segment == null:
 		segment = ShipSegment.new()
@@ -61,6 +62,8 @@ func place(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.
 		segments.append(segment)
 	segment.kind = kind
 	segment.facing = facing
+	if kind == ShipSegment.Kind.WEAPON and weapon != &"":
+		segment.weapon = weapon
 	emit_changed()
 	return segment
 

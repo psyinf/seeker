@@ -79,6 +79,13 @@ var base_velocity: Vector2 = Vector2.ZERO
 var aim_override: Vector2 = Vector2.ZERO
 ## Seconds until the turret may fire again.
 var _cooldown: float = 0.0
+## Beam state for energy (BEAM) weapons: whether the beam is drawing and how far
+## it reaches this frame (local pixels from the muzzle).
+var _beam_active: bool = false
+var _beam_length: float = 0.0
+
+## Physics layer targets sit on; beams ray-cast against it.
+const TARGET_LAYER := 4
 
 
 ## World position of the barrel tip, where bolts spawn.
@@ -114,6 +121,9 @@ func _process(delta: float) -> void:
 			var error := wrapf(target - global_rotation, -PI, PI)
 			var step := clampf(error, -slew_speed * delta, slew_speed * delta)
 			global_rotation += step
+	if weapon != null and weapon.kind == WeaponConfig.Kind.BEAM:
+		_process_beam(delta)
+		return
 	_cooldown = maxf(0.0, _cooldown - delta)
 	if firing and _cooldown <= 0.0:
 		_fire()
@@ -152,9 +162,43 @@ func _fire() -> void:
 		recoil_applied.emit(-dir * recoil)
 
 
+## Runs the energy beam while firing: ray-casts along the barrel up to the
+## weapon's range, burns the first target hit (damage per second), and records the
+## reach so `_draw` can render the beam. No projectile, no recoil.
+func _process_beam(delta: float) -> void:
+	if not firing:
+		if _beam_active:
+			_beam_active = false
+			queue_redraw()
+		return
+	var muzzle := muzzle_position()
+	var dir := Vector2.UP.rotated(global_rotation)
+	var reach: float = weapon.beam_range
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(muzzle, muzzle + dir * reach)
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	query.collision_mask = TARGET_LAYER
+	var hit := space.intersect_ray(query)
+	if not hit.is_empty():
+		reach = muzzle.distance_to(hit.position)
+		var target := hit.collider as Node
+		if target != null and target.has_method("hit"):
+			target.hit(weapon.damage * delta)
+	_beam_active = true
+	_beam_length = reach
+	queue_redraw()
+
+
 func _draw() -> void:
 	# Barrel first so the base cap sits over its root; forward is -Y.
 	var half := barrel_width * 0.5
 	draw_rect(Rect2(-half, -barrel_length, barrel_width, barrel_length), barrel_color)
 	draw_circle(Vector2.ZERO, base_radius, turret_color)
 	draw_arc(Vector2.ZERO, base_radius, 0.0, TAU, 24, outline_color, 2.0, true)
+	if _beam_active and weapon != null:
+		var start := Vector2(0.0, -barrel_length)
+		var tip := Vector2(0.0, -barrel_length - _beam_length)
+		draw_line(start, tip, Color(weapon.projectile_color, 0.3), 6.0, true)
+		draw_line(start, tip, weapon.projectile_color, 2.0, true)
+		draw_circle(tip, 3.0, weapon.projectile_color)

@@ -24,8 +24,10 @@ const ZOOM_STEP := 1.1
 @export var allow_hull_design: bool = true
 
 ## Part palette grouped into KSP-style category tabs. Each entry is
-## `[category_label, [[kind, part_label], ...]]`; the tab strip picks a category
-## and only that category's parts are shown. Keep kinds listed once.
+## `[category_label, [[kind, part_label] | [kind, part_label, weapon_name], ...]]`;
+## the tab strip picks a category and only that category's parts are shown. A
+## third element names the `WeaponConfig` preset a WEAPON part places. Keep each
+## distinct part listed once.
 const CATEGORIES := [
 	["Command", [
 		[ShipSegment.Kind.CORE, "Core"],
@@ -44,7 +46,10 @@ const CATEGORIES := [
 		[ShipSegment.Kind.RADIATOR, "Radiator"],
 	]],
 	["Combat", [
-		[ShipSegment.Kind.WEAPON, "Weapon"],
+		[ShipSegment.Kind.WEAPON, "Autocannon", &"autocannon"],
+		[ShipSegment.Kind.WEAPON, "Railgun", &"railgun"],
+		[ShipSegment.Kind.WEAPON, "Missile", &"missile"],
+		[ShipSegment.Kind.WEAPON, "Laser", &"laser"],
 		[ShipSegment.Kind.SHIELD, "Shield"],
 		[ShipSegment.Kind.DRONE_BAY, "Drone Bay"],
 	]],
@@ -55,6 +60,8 @@ const CATEGORIES := [
 
 var design: ShipDesign
 var selected_kind: ShipSegment.Kind = ShipSegment.Kind.HULL
+## For WEAPON placement, which `WeaponConfig` preset the next weapon cell uses.
+var selected_weapon: StringName = &"autocannon"
 var place_facing: ShipSegment.Facing = ShipSegment.Facing.UP
 var hover_cell: Vector2i = Vector2i.ZERO
 var has_hover: bool = false
@@ -80,7 +87,7 @@ func _ready() -> void:
 	design.changed.connect(_on_design_changed)
 	_build_ui()
 	_select_category(_category_of_kind(selected_kind))
-	_select_kind(selected_kind)
+	_select_part(selected_kind, selected_weapon)
 	_refresh_stats()
 	queue_redraw()
 
@@ -163,7 +170,7 @@ func _place() -> void:
 	if existing != null and existing.fixed:
 		_set_status("Cell locked")
 		return
-	design.place(selected_kind, hover_cell, place_facing)
+	design.place(selected_kind, hover_cell, place_facing, selected_weapon)
 
 
 func _erase() -> void:
@@ -309,23 +316,28 @@ func _select_category(index: int) -> void:
 		child.queue_free()
 	for entry in CATEGORIES[index][1]:
 		var kind: ShipSegment.Kind = entry[0]
+		var weapon: StringName = entry[2] if entry.size() > 2 else &""
 		var button := Button.new()
 		button.text = entry[1]
 		button.toggle_mode = true
-		button.button_pressed = kind == selected_kind
+		button.button_pressed = kind == selected_kind and (weapon == &"" or weapon == selected_weapon)
 		button.set_meta("kind", kind)
-		button.pressed.connect(_select_kind.bind(kind))
+		button.set_meta("weapon", weapon)
+		button.pressed.connect(_select_part.bind(kind, weapon))
 		_parts_box.add_child(button)
 
 
-func _select_kind(kind: ShipSegment.Kind) -> void:
+func _select_part(kind: ShipSegment.Kind, weapon: StringName = &"") -> void:
 	selected_kind = kind
+	if weapon != &"":
+		selected_weapon = weapon
 	# Drives vent aft by default so extensions stack toward the nose.
 	if kind == ShipSegment.Kind.THRUSTER:
 		place_facing = ShipSegment.Facing.DOWN
 	for child in _parts_box.get_children():
 		if child is Button:
-			child.button_pressed = child.get_meta("kind") == kind
+			var w: StringName = child.get_meta("weapon")
+			child.button_pressed = child.get_meta("kind") == selected_kind and (w == &"" or w == selected_weapon)
 	_hover.queue_redraw()
 
 
