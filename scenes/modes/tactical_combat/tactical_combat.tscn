@@ -1,7 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ship/ship.tscn" id="1_ship"]
 [ext_resource type="Script" path="res://scenes/modes/tactical_combat/tactical_combat.gd" id="2_tc"]
+[ext_resource type="Script" path="res://scenes/main/edge_marker_layer.gd" id="9_markers"]
 [ext_resource type="PackedScene" path="res://scenes/main/flight_indicators.tscn" id="3_indic"]
 [ext_resource type="PackedScene" path="res://scenes/main/space_grid.tscn" id="4_grid"]
 [ext_resource type="PackedScene" path="res://scenes/ui/command_bar.tscn" id="5_cmd"]
@@ -30,6 +31,9 @@ target_scene = ExtResource("8_target")
 
 [node name="FlightIndicators" parent="." instance=ExtResource("3_indic")]
 ship_path = NodePath("../Ship")
+
+[node name="EdgeMarkers" type="CanvasLayer" parent="."]
+script = ExtResource("9_markers")
 
 [node name="CommandBar" parent="." instance=ExtResource("5_cmd")]
 

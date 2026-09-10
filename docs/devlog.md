@@ -17,6 +17,29 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Off-screen target markers (edge-marker system)  (branch: feat/ship-topdown-view)
+
+**Did:** Added a first-class **edge-marker system** that pins directional markers
+to the viewport border for off-screen targets. Two pieces: `EdgeMarker` (the
+reusable visual primitive — a styleable `Node2D` that `_draw`s a triangle now,
+with a `Shape` enum ready for more silhouettes) and `EdgeMarkerLayer` (a
+`CanvasLayer` overlay that tracks a node **group**, converts each node to screen
+space via the camera, and drives a pool of `EdgeMarker`s clamped to the border,
+pointing at their targets). Targets join the `targets` group; the layer marks
+them in red within `max_distance`. Wired as an `EdgeMarkers` node in
+`tactical_combat.tscn`.
+**Why:** The player needs to know where nearby targets are once they leave the
+view. Built it group-driven and pooled so "more markers later" (waypoints,
+allies, objectives) is just another layer + color, or a new `Shape` — no changes
+to existing callers.
+**Learned:** `get_viewport().get_canvas_transform()` maps world→screen including
+the `Camera2D`, and its `affine_inverse()` recovers the view-center in world
+space for the range check — no manual zoom math. A `CanvasLayer` keeps markers
+screen-fixed regardless of camera pan/zoom; its `Node2D` children position in
+raw screen pixels.
+**Follow-ups:** Distance-fade or a count badge when many targets stack on one
+edge; per-target colors/shapes when target kinds diverge.
+
 ## 2026-09-10 — Retrograde marker fires retro thrusters + align-thrust default on  (branch: feat/ship-topdown-view)
 
 **Did:** Clicking/holding the retrograde reticle now fires the ship's weaker

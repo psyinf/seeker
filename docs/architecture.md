@@ -19,8 +19,9 @@ self-contained scenes wired by node references (and, later, signals).
   `run/main_scene`). It holds a `Main` root and a `ModeManager` child; the
   manager instances the active mode scene as its own child.
 - **Tactical combat mode** (`res://scenes/modes/tactical_combat/`): a
-  `TacticalCombat` (`Node2D`) owning a `Camera2D`, the `Ship`, `FlightIndicators`
-  and `SpaceGrid` scenes. It only keeps the camera centered on the ship.
+  `TacticalCombat` (`Node2D`) owning a `Camera2D`, the `Ship`, `FlightIndicators`,
+  an `EdgeMarkers` overlay (off-screen target markers) and `SpaceGrid` scenes. It
+  only keeps the camera centered on the ship.
 
 ## Autoloads (singletons)
 
@@ -167,6 +168,23 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - `VectorArrow` (`res://scenes/main/vector_arrow.tscn` + `vector_arrow.gd`) is a
   reusable arrow built from a `Line2D` shaft + `Polygon2D` head, oriented by
   `rotation` and sized by `length` — no custom `_draw`.
+
+### Edge markers (off-screen targets)
+- Scripts: `res://scenes/main/edge_marker_layer.gd` (`class_name EdgeMarkerLayer`,
+  a `CanvasLayer`) + `res://scenes/main/edge_marker.gd` (`class_name EdgeMarker`,
+  a `Node2D`). In `tactical_combat.tscn` as the `EdgeMarkers` node.
+- Purpose-built to be extended: `EdgeMarker` is the **visual primitive** — it
+  `_draw`s a triangle now, styleable by `color`/`marker_size`, with a `Shape`
+  enum ready for more silhouettes. `EdgeMarkerLayer` is the **overlay manager**:
+  it tracks a node **group** (`target_group`, default `targets`), and for every
+  member that is off-screen (and within `max_distance`) it drives a pooled
+  `EdgeMarker` clamped to the viewport border, rotated to point at the target.
+- Decoupled: nodes opt in by joining the group (targets carry `groups=["targets"]`
+  in `target.tscn`); the layer never references spawners. Adding another marker
+  kind = another layer (different group/color) or a new `Shape`.
+- Screen mapping uses `get_viewport().get_canvas_transform()` for world→screen
+  (camera-aware); its `affine_inverse()` recovers the view center in world space
+  for the range check. The `CanvasLayer` keeps markers screen-fixed under pan/zoom.
 
 ### Command bar
 - Scenes/scripts: `res://scenes/ui/command_bar.tscn` + `command_bar.gd`
