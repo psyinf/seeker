@@ -17,6 +17,69 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Align-thrust HUD toggle + retrograde reticle  (branch: feat/ship-topdown-view)
+
+**Did:** Surfaced the `require_alignment` flight mode as an **Align Thrust** toggle
+in the command bar (wired through `TacticalCombat` to `Ship.set_require_alignment`).
+Added a **retrograde marker** to the flight indicators: a fixed-distance cue
+opposite the velocity showing where to point the nose for a thrust-to-stop burn.
+Started as a plain dot, then upgraded to an anti-aliased **ring-with-spokes
+reticle** (classic navball retrograde look) built in code from `Line2D`s, with
+tunable radius/width/spoke/color exports.
+**Why:** Align-thrust wanted a runtime toggle, not just an inspector flag. The
+retrograde cue makes point-then-burn stopping readable — the velocity arrow shows
+*how much* speed to kill, the reticle shows *which way* to face.
+**Learned:** The marker only needs the direction, so it sits at a fixed distance
+and the speed magnitude is left to the prograde arrow — keeps the HUD uncluttered.
+`Line2D` with `closed = true` + `antialiased = true` makes a clean ring without
+custom `_draw`.
+**Follow-ups:** Could add a matching prograde reticle if the arrows feel busy.
+
+## 2026-09-10 — Click-along-heading thrust tap  (branch: feat/ship-topdown-view)
+
+**Did:** A quick LMB click whose direction is within `tap_thrust_tolerance_deg`
+(20°) of the ship's current heading now fires an immediate forward thrust burst
+for `tap_thrust_duration` (0.15 s) instead of deferring a (redundant) turn. Off-
+heading clicks keep the existing turn deferred by `DOUBLE_CLICK_WINDOW_MS`. A
+double-click still opens the context menu and now also cancels any nudge the
+first click started; a fresh press supersedes a lingering tap burn.
+**Why:** The 250 ms double-click window is only there to hide a *visible rotation*
+before the menu. When the nose already points where you click there's nothing to
+turn, so waiting felt dead — a tap should just add speed along the heading.
+**Learned:** The nudge has to run through `_physics_process` (via a countdown
+timer), not be applied in `_unhandled_input`, so the thruster FX `main_throttle`
+plume shows and the impulse is frame-rate independent.
+**Follow-ups:** Expose the tap tolerance/duration on the HUD if it needs tuning.
+
+## 2026-09-09 — Align-gated thrust mode  (branch: feat/ship-topdown-view)
+
+**Did:** Added a `require_alignment` flight toggle (with `alignment_tolerance_deg`)
+to `Ship`. When on, the main engine only fires once the nose is within tolerance
+of the aim direction, so a held LMB turns the ship first and thrusts only after
+it lines up. When off, thrust keeps applying along the current heading while
+still turning (previous behaviour, still the default).
+**Why:** Accelerating along the main engine means off-axis presses shove the ship
+sideways-ish during the turn; the new mode gives clean point-then-burn flight.
+**Learned:** The heading/aim gap is just `Vector2.UP.rotated(rotation).angle_to(aim_direction)`;
+gating the existing thrust block on it keeps the turn/settle logic untouched.
+**Follow-ups:** Could expose the toggle in the HUD instead of only the inspector. (done, below)
+
+## 2026-09-09 — Align-thrust HUD toggle + retrograde marker  (branch: feat/ship-topdown-view)
+
+**Did:** Surfaced the align-thrust mode as an "Align Thrust: On/Off" button in
+`CommandBar` (new `align_thrust_toggled` signal → `Ship.set_require_alignment`,
+wired in `TacticalCombat`). Added a red **retrograde marker** to
+`FlightIndicators`: a fixed-length arrow pointing opposite the velocity — the
+heading to hold the nose on and burn to cancel speed and stop. It shows/hides
+with the prograde arrow (only while moving).
+**Why:** The align toggle belongs on the HUD, not just the inspector; the retro
+marker tells the player exactly where to point for a thrust-to-stop, which pairs
+with align-thrust to turn "stop" into aim-at-marker-and-hold.
+**Learned:** Retrograde is just `velocity.angle() + PI`; a fixed length reads as
+a "point here" cue rather than a magnitude (unlike the scaled prograde arrow).
+**Follow-ups:** Could auto-hold the retro burn (one-click Full Stop already does
+the physics; this marker is the manual-flight equivalent).
+
 ## 2026-09-09 — Shootable targets, swept-ray hits, Mk1 fix, 3-tier fire control  (branch: feat/ship-topdown-view)
 
 **Did:** Added shootable `Target`/`TargetField` (see prior entry). Switched bolt

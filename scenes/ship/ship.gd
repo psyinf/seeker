@@ -25,6 +25,19 @@ signal projectile_fired(projectile: Node2D)
 ## Seconds LMB must be held before it counts as thrust; a shorter press is a
 ## click, which only turns the ship without accelerating.
 @export var hold_thrust_delay: float = 0.15
+## A quick click whose direction is within this angle of the current heading
+## fires a short forward thrust tap instead of a (redundant) turn, so you can
+## nudge the ship up to speed without waiting out the double-click window.
+@export_range(0.0, 90.0, 1.0) var tap_thrust_tolerance_deg: float = 20.0
+## How long that forward thrust tap burns, in seconds.
+@export var tap_thrust_duration: float = 0.15
+## When true, the main engine only fires once the nose is aligned with the aim
+## direction: the ship turns to face the target first, then accelerates. When
+## false, thrust is applied along the current heading even while still turning.
+@export var require_alignment: bool = false
+## Max heading error, in degrees, that still counts as aligned enough to thrust
+## (only used when `require_alignment` is on).
+@export_range(0.0, 90.0, 1.0) var alignment_tolerance_deg: float = 5.0
 
 @export_group("Turning")
 ## Steering torque. Angular acceleration = turn_torque / mass (rad/s²). The ship
@@ -63,6 +76,8 @@ const SETTLE_SPEED := 0.05
 var _lmb_held: bool = false
 ## Seconds the current LMB hold has lasted.
 var _hold_time: float = 0.0
+## Remaining burn time on a click-to-nudge forward thrust tap (see tap_thrust_*).
+var _tap_thrust_time: float = 0.0
 ## A single click's turn is deferred by the double-click window so the first
 ## click of a double-click never rotates the ship.
 var _pending_turn: bool = false
@@ -105,6 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.pressed:
 		_lmb_held = true
 		_hold_time = 0.0
+		_tap_thrust_time = 0.0 # a fresh press supersedes any lingering tap burn
 		return
 	_lmb_held = false
 	if _hold_time >= hold_thrust_delay:
@@ -113,14 +129,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _last_click_msec <= DOUBLE_CLICK_WINDOW_MS:
 		_pending_turn = false # this is a double-click — cancel the first click's turn
+		_tap_thrust_time = 0.0 # and cancel a nudge the first click may have started
 		_last_click_msec = -100000
 		context_menu_requested.emit()
 	else:
 		var to_mouse := get_global_mouse_position() - global_position
 		if to_mouse.length() > 0.001:
-			_pending_turn_dir = to_mouse.normalized()
-			_pending_turn = true
-			_pending_turn_msec = now
+			var dir := to_mouse.normalized()
+			var heading := Vector2.UP.rotated(rotation)
+			# Already pointing (roughly) where you clicked? Nudge forward now instead
+			# of deferring a turn that wouldn't swing the nose anyway.
+			if absf(heading.angle_to(dir)) <= deg_to_rad(tap_thrust_tolerance_deg):
+				_tap_thrust_time = tap_thrust_duration
+				_braking = false # manual input cancels a Full Stop
+			else:
+				_pending_turn_dir = dir
+				_pending_turn = true
+				_pending_turn_msec = now
 		_last_click_msec = now
 
 
@@ -146,8 +171,14 @@ func _physics_process(delta: float) -> void:
 	rcs_translation = Vector2.ZERO
 	if _lmb_held and _hold_time >= hold_thrust_delay:
 		var heading := Vector2.UP.rotated(rotation)
-		velocity += heading * (thrust_force / mass) * delta
+		if not require_alignment or absf(heading.angle_to(aim_direction)) <= deg_to_rad(alignment_tolerance_deg):
+			velocity += heading * (thrust_force / mass) * delta
+			main_throttle = 1.0
+	elif _tap_thrust_time > 0.0:
+		# Immediate forward nudge from a click made along the current heading.
+		velocity += Vector2.UP.rotated(rotation) * (thrust_force / mass) * delta
 		main_throttle = 1.0
+		_tap_thrust_time -= delta
 	elif _braking:
 		_apply_braking(delta)
 	velocity = velocity.limit_length(max_speed)
@@ -166,6 +197,11 @@ func full_stop() -> void:
 func set_fire_control_mode(mode: int) -> void:
 	if _fire_control != null:
 		_fire_control.mode = mode
+
+
+## Toggles align-gated thrust (point-then-burn) from the HUD.
+func set_require_alignment(enabled: bool) -> void:
+	require_alignment = enabled
 
 
 ## Toggles the fire command on every mounted turret (each gates its own rate).

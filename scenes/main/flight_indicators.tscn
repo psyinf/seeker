@@ -11,3 +11,5 @@ color = Color(1, 0.780392, 0.278431, 1)
 
 [node name="VelocityArrow" parent="." instance=ExtResource("2_va")]
 color = Color(0.419608, 1, 0.548039, 1)
+
+[node name="RetroMarker" type="Node2D" parent="."]

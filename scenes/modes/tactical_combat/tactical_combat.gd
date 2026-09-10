@@ -25,6 +25,7 @@ func _ready() -> void:
 		context_menu.full_stop_requested.connect(ship.full_stop)
 	if ship != null and command_bar != null:
 		command_bar.fire_control_mode_changed.connect(ship.set_fire_control_mode)
+		command_bar.align_thrust_toggled.connect(ship.set_require_alignment)
 	if ship != null:
 		ship.projectile_fired.connect(_on_ship_projectile_fired)
 
