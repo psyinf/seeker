@@ -17,6 +17,32 @@ Entry template:
 
 ---
 
+## 2026-09-10 — In-game ship design editor  (branch: feat/ship-design-editor)
+
+**Did:** Added a standalone grid **editor** for `ShipDesign`
+(`scenes/ship/editor/ship_design_editor.tscn` + `.gd`, plus `editor_hover.gd`).
+Left-click places the palette-selected module kind, right-click removes, mouse
+wheel / R rotates the placement facing (and any directional cell under the
+cursor). A code-built UI shows a 12-kind palette, live derived stats (class,
+cells, mass, net power, hull HP, cargo, scan, cost) and New/Clear/Save/Load
+(saves to `user://ship_designs/current.tres`). Reuses `SegmentedHull` to render
+and a faint grid drawn by the root. Added `ShipDesign.place()`/`remove_at()`
+mutators and `ShipSegment.is_directional()`.
+**Why:** The GDD wants players to build their ship from modules; this is the
+authoring surface. Kept it a self-contained scene (not yet a `ModeManager` mode)
+so it can grow before we wire it into the game flow. UI is built in code to avoid
+fragile `.tscn` authoring.
+**Learned:** Run a specific scene with
+`..\Godot_v4.6.3-stable_win64.exe --path . res://<scene>.tscn`. `_unhandled_input`
+keeps palette/bar button clicks from leaking into place/remove. Hover is a child
+*after* the hull so its highlight draws on top; the grid is the root's own `_draw`
+so it sits behind. Load with `CACHE_MODE_IGNORE` so re-loading a saved `.tres`
+doesn't hand back the cached in-memory design.
+**Follow-ups:** wire the editor into `ModeManager` (or a menu); thruster
+auto-placement from the hull; feed the design's aggregates into flight/combat.
+
+---
+
 ## 2026-09-10 — Nomad-class + convex-hull outer shape  (branch: feat/ship-design-editor)
 
 **Did:** `SegmentedHull` now draws the design's **convex hull** (cell corners →

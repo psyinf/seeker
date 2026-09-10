@@ -48,6 +48,11 @@ enum Facing { UP, RIGHT, DOWN, LEFT }
 		emit_changed()
 
 
+## Whether a kind's `facing` is meaningful (thruster exhaust, weapon barrel).
+static func is_directional(kind: Kind) -> bool:
+	return kind == Kind.THRUSTER or kind == Kind.WEAPON
+
+
 ## This cell's baseline stat block (a fresh copy; modifiers may be layered on it).
 func stats() -> ModuleStats:
 	return ModuleStats.base_stats(kind)

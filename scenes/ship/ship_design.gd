@@ -33,6 +33,30 @@ func get_segment_at(cell: Vector2i) -> ShipSegment:
 	return null
 
 
+## Place `kind` at `cell`, replacing any segment already there. Returns the
+## segment. Used by the editor; emits `changed` so views refresh.
+func place(kind: ShipSegment.Kind, cell: Vector2i, facing := ShipSegment.Facing.UP) -> ShipSegment:
+	var segment := get_segment_at(cell)
+	if segment == null:
+		segment = ShipSegment.new()
+		segment.cell = cell
+		segments.append(segment)
+	segment.kind = kind
+	segment.facing = facing
+	emit_changed()
+	return segment
+
+
+## Remove the segment at `cell`, if any. Returns true when one was removed.
+func remove_at(cell: Vector2i) -> bool:
+	for i in segments.size():
+		if segments[i] != null and segments[i].cell == cell:
+			segments.remove_at(i)
+			emit_changed()
+			return true
+	return false
+
+
 ## Inclusive grid bounds covering every cell; a zero-size rect when empty.
 func bounds() -> Rect2i:
 	if segments.is_empty():

@@ -54,23 +54,42 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
 - **Segmented ship design (data-driven, grid-based):** ships are authored as a
   grid of cells so they can later be built in-game and drive per-part physics.
   - `res://scenes/ship/ship_segment.gd` (`class_name ShipSegment extends
-    Resource`, `@tool`) — one cell: a `kind` (`CORE`, `HULL`, `THRUSTER`,
-    `WEAPON`, `REACTOR`), an integer `cell` coordinate (+X right, +Y aft), and a
-    `facing` for directional parts (`facing_dir()` gives the local unit vector;
-    UP = -Y = forward).
+    Resource`, `@tool`) — one cell: a `kind` (CORE, HULL, ARMOR, THRUSTER,
+    WEAPON, REACTOR, DRONE_BAY, CARGO_HOLD, SHIELD, SENSOR, FUEL_TANK, RADIATOR),
+    an integer `cell` coordinate (+X right, +Y aft), and a `facing` for
+    directional parts (`facing_dir()` gives the local unit vector; UP = -Y =
+    forward). `stats()` returns its baseline `ModuleStats`; `is_directional(kind)`
+    flags kinds whose facing matters (thruster/weapon).
   - `res://scenes/ship/ship_design.gd` (`class_name ShipDesign extends Resource`,
-    `@tool`) — the whole ship: `cell_size` (px per cell) + `Array[ShipSegment]`,
-    with `get_segment_at()`, `bounds()`, and `create_default()` (the stock nose-
-    gun / cockpit / reactor-with-wings / three-nozzle-tail starter). This is the
+    `@tool`) — the whole ship: `ship_class` (hull class name, e.g. "Nomad"),
+    `cell_size` (px per cell) + `Array[ShipSegment]`, with `get_segment_at()`,
+    `place()`/`remove_at()` (editor mutators), `bounds()`, `convex_hull()` (outer
+    silhouette from cell corners), `core_segment()`, derived totals
+    (`total_mass`, `power_generation_total`/`power_draw_total`/`net_power`,
+    `total_hp`, `cargo_capacity_total`, `scan_range_total`, `build_cost_total`),
+    and `create_default()` (the stock **Nomad-class** starter). This is the
     save/load unit for a layout (`.tres`).
+  - `res://scenes/ship/module_stats.gd` (`class_name ModuleStats extends
+    Resource`, `@tool`) — baseline stat block per kind (mass, power draw/gen,
+    armor HP, build cost, crew/heat = 0 for now, plus cargo/scan/fuel extras).
+    `base_stats(kind)` returns a fresh copy so upgrades/modifiers can layer on.
   - `res://scenes/ship/segmented_hull.gd` (`class_name SegmentedHull extends
-    Node2D`, `@tool`) — draws a `ShipDesign`: a colored square per cell plus a
-    kind accent (thruster nozzle, weapon barrel, reactor/core glow). Pure
-    rendering, no flight logic; falls back to `create_default()` when its
-    `design` is unset. It replaces `ShipHull` in `ship.tscn` as the stock visual.
+    Node2D`, `@tool`) — draws a `ShipDesign`: the convex-hull outer silhouette
+    beneath a colored square per cell plus a kind accent (thruster nozzle, weapon
+    barrel, reactor/core glow). Pure rendering, no flight logic; falls back to
+    `create_default()` when its `design` is unset. It replaces `ShipHull` in
+    `ship.tscn` as the stock visual.
+  - **In-game editor:** `res://scenes/ship/editor/ship_design_editor.tscn` +
+    `ship_design_editor.gd` (a `Node2D` controller) — standalone grid editor:
+    left-click places the palette-selected kind, right-click removes, wheel/R
+    rotates facing. A code-built UI shows a module palette, live derived stats,
+    and New/Clear/Save/Load (saves to `user://ship_designs/current.tres`). It
+    reuses `SegmentedHull` (child `Hull`) to render and `editor_hover.gd` (child
+    `Hover`) to highlight the cursor cell. Not yet wired into `ModeManager`; run
+    the scene directly to open it.
   - **Not yet wired to flight/combat** — mass, thrust, and weapons still come from
-    the existing `Ship`/turret/thruster systems. Per-segment physics and an
-    in-game grid editor are the planned follow-up PRs.
+    the existing `Ship`/turret/thruster systems. Per-segment physics is the
+    planned follow-up.
 - **Propulsion FX is a separate component:** `res://scenes/ship/ship_thrusters.gd`
   (`class_name ShipThrusters`, `@tool`), a child `Node2D` placed **before** the
   hull in the tree so plumes render behind it. Each frame it reads `Ship`'s
