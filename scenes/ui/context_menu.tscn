@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/context_menu.gd" id="1_cm"]
+
+[node name="ContextMenu" type="CanvasLayer"]
+script = ExtResource("1_cm")
+
+[node name="Catcher" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Menu" type="PanelContainer" parent="Catcher"]
+layout_mode = 0
+offset_right = 130.0
+offset_bottom = 68.0
+
+[node name="VBox" type="VBoxContainer" parent="Catcher/Menu"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FullStop" type="Button" parent="Catcher/Menu/VBox"]
+layout_mode = 2
+text = "Full Stop"
+
+[node name="Cancel" type="Button" parent="Catcher/Menu/VBox"]
+layout_mode = 2
+text = "Cancel"

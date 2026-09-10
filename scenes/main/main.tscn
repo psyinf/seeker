@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/mode_manager.gd" id="1_mm"]
+[ext_resource type="PackedScene" path="res://scenes/modes/tactical_combat/tactical_combat.tscn" id="2_tc"]
+
+[node name="Main" type="Node2D"]
+
+[node name="ModeManager" type="Node" parent="."]
+script = ExtResource("1_mm")
+tactical_combat_scene = ExtResource("2_tc")
