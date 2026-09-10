@@ -111,6 +111,16 @@ catalog and base values in
 | Fuel tank | Jump fuel storage |
 | Radiator / heat sink | Heat management (inert until heat exists) |
 
+### 4.3 Ship classes
+
+A ship's **class** names its hull and hints at its role. The starter hull is the
+**Nomad-class** — an exploration / deep-space recon ship (self-reliant long-haul
+wanderer), stored as `ShipDesign.ship_class`.
+
+Naming convention: recon/explorer hulls take **navigator / guiding-light** names
+(Nomad, Pathfinder, Lodestar, Wayfarer); later combat and hauler classes use their
+own themes so a class name reads its role at a glance.
+
 ## 5. World & setting
 
 

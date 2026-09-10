@@ -6,6 +6,12 @@ extends Resource
 ## a ship layout (author as a `.tres`, or build one in code). Rendering and, later,
 ## the flight model and the in-game editor all operate on this one resource.
 
+## Class/type name of the hull (e.g. "Nomad" for the exploration/recon starter).
+@export var ship_class: String = "":
+	set(value):
+		ship_class = value
+		emit_changed()
+
 ## Pixels per grid cell (both axes).
 @export var cell_size: float = 22.0:
 	set(value):
@@ -137,6 +143,7 @@ func build_cost_total() -> float:
 ## something to draw. Forward is -Y, so smaller Y is toward the nose.
 static func create_default() -> ShipDesign:
 	var design := ShipDesign.new()
+	design.ship_class = "Nomad"
 	design.segments = [
 		_seg(ShipSegment.Kind.WEAPON, Vector2i(0, -2), ShipSegment.Facing.UP),
 		_seg(ShipSegment.Kind.CORE, Vector2i(0, -1)),

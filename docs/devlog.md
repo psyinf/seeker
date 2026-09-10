@@ -17,6 +17,25 @@ Entry template:
 
 ---
 
+## 2026-09-10 — Nomad-class + convex-hull outer shape  (branch: feat/ship-design-editor)
+
+**Did:** `SegmentedHull` now draws the design's **convex hull** (cell corners →
+`Geometry2D.convex_hull`) as the ship's outer silhouette beneath the module tiles
+(`ShipDesign.convex_hull()`), with a TODO to derive thruster placement from that
+hull. Added a `ship_class` field to `ShipDesign` and named the starter hull the
+**Nomad-class** (exploration / deep-space recon); documented the class + naming
+convention in [game-design.md](game-design.md).
+**Why:** A single outer shape reads as one ship instead of loose tiles, and it is
+derived from the design so it tracks whatever the editor produces. Ships need
+distinct classes; the starter is the lonely long-haul explorer, so navigator /
+guiding-light names fit (Nomad, Pathfinder, Lodestar…).
+**Learned:** `Geometry2D.convex_hull` wants ≥3 points; guard degenerate designs.
+Hull is drawn first so tiles layer on top and cells read as mounted.
+**Follow-ups:** thruster auto-placement from the hull; the grid editor
+(place/remove/rotate + palette, set `ship_class`).
+
+---
+
 ## 2026-09-10 — Ship module types + metrics  (branch: feat/ship-design-editor)
 
 **Did:** Extended the segmented-ship model with **module kinds and stats**. Grew
