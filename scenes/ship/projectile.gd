@@ -11,6 +11,8 @@ extends Node2D
 ## Bolt color.
 @export var color: Color = Color("ffd36b")
 
+## Damage dealt to a target on impact; set by the firing turret from its weapon.
+var damage: float = 1.0
 ## World-space velocity set by the firing turret, in pixels/second.
 var _velocity: Vector2 = Vector2.ZERO
 var _age: float = 0.0
@@ -25,18 +27,25 @@ func launch(velocity: Vector2) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_steer(delta) # straight by default; guided rounds override this to home
 	var step := _velocity * delta
 	# Sweep the whole step so a fast bolt can't tunnel past a small target.
 	var target := _swept_target(global_position, global_position + step)
 	if target != null:
 		if target.has_method("hit"):
-			target.hit()
+			target.hit(damage)
 		queue_free()
 		return
 	position += step
 	_age += delta
 	if _age >= lifetime:
 		queue_free()
+
+
+## Per-frame steering hook. The base bolt flies straight (no-op); guided rounds
+## override this to bend `_velocity` toward a target.
+func _steer(_delta: float) -> void:
+	pass
 
 
 ## Ray-casts the bolt's path this frame against the targets layer; returns the

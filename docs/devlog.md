@@ -13,11 +13,35 @@ Entry template:
 **Why:** the reasoning / decision.
 **Learned:** gotchas, surprises, things to remember.
 **Follow-ups:** open items, if any.
-```
-
 ---
 
-## 2026-09-10 — Per-hull RCS mounts (visible again)  (branch: feat/ship-design-editor)
+## 2026-09-10 — Weapons: two kinds, recoil vs. RCS  (branch: feat/ship-design-editor)
+
+**Did:** Added a data-driven weapon system. `WeaponConfig` (`Resource`) holds a
+`kind` (PROJECTILE / GUIDED) and the shared properties **speed, damage, recoil
+(via `ammo_mass`), cadence (`fire_rate`)** plus homing turn rate, color and the
+round scene, with static presets: **railgun** (≈1/s, massive speed + damage,
+heavy recoil), **autocannon** (high cadence, tiny damage, light recoil) and
+**missile** (guided, homing, heavy warhead). Turrets now mount a `WeaponConfig`
+(syncing cadence/speed, spawning its round, applying damage/color); on each
+projectile shot they emit `recoil_applied(impulse)`. `Projectile` gained a
+`damage` field and a `_steer()` hook; `Missile extends Projectile` overrides it
+to home on the nearest target (`intersect_shape`) at a limited turn rate. Recoil
+is `projectile_speed × ammo_mass` (round momentum); the ship applies the kick to
+`velocity` and the RCS cancels it up to `rcs_recoil_compensation` per second —
+overflow shoves the ship. `Target.hit(damage)` now takes fractional damage.
+`Ship._build_turrets` cycles the three presets across WEAPON cells for now.
+**Why:** Gives combat real weapon variety and makes recoil a firepower vs.
+station-keeping trade-off, matching the "recoil compensated by RCS but might
+overwhelm it" brief.
+**Learned:** Keeping guided rounds a subclass of `Projectile` with a single
+`_steer()` override reuses the swept collision/damage/despawn with no
+duplication. New `class_name`s (WeaponConfig, Missile) added outside the editor
+needed the usual headless class-cache regen before running.
+**Follow-ups:** let the ship editor pick a weapon per WEAPON cell (replace the
+round-robin preset assignment); ammo/heat/power hooks for weapons; enemy fire.
+
+---
 
 **Did:** The segmented hull had no thruster markers and the old `PropulsionConfig`
 default positioned RCS jets for the retired diamond hull, so maneuvering thrusters

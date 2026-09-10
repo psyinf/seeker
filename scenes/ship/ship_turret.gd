@@ -12,6 +12,10 @@ extends Node2D
 ## itself (it may not know the world node) — a listener places it in the world.
 signal projectile_fired(projectile: Node2D)
 
+## Emitted on each shot with the recoil impulse (opposite the muzzle), so the ship
+## can push back against it with its RCS. Zero-recoil weapons never emit.
+signal recoil_applied(impulse: Vector2)
+
 ## Radius of the turret base, in pixels.
 @export var base_radius: float = 9.0:
 	set(value):
@@ -52,11 +56,17 @@ signal projectile_fired(projectile: Node2D)
 @export_range(0.0, 30.0, 0.1) var slew_speed: float = 8.0
 
 @export_group("Weapon")
-## Bolt scene spawned on each shot.
+## The mounted weapon's stat block. Assigning one syncs cadence and muzzle speed;
+## leave null to use the raw fire_rate/projectile_speed below (a plain mount).
+@export var weapon: WeaponConfig:
+	set(value):
+		weapon = value
+		_sync_weapon()
+## Fallback bolt scene, used when the weapon config carries none.
 @export var projectile_scene: PackedScene
-## Shots per second while firing.
+## Shots per second while firing (overridden by an assigned weapon).
 @export_range(0.1, 30.0, 0.1) var fire_rate: float = 5.0
-## Muzzle velocity of each bolt, in pixels/second.
+## Muzzle velocity of each bolt, in pixels/second (overridden by an assigned weapon).
 @export var projectile_speed: float = 1100.0
 
 ## True while the fire command is held; the turret shoots at its fire rate.
@@ -74,6 +84,21 @@ var _cooldown: float = 0.0
 ## World position of the barrel tip, where bolts spawn.
 func muzzle_position() -> Vector2:
 	return global_position + Vector2.UP.rotated(global_rotation) * barrel_length
+
+
+func _ready() -> void:
+	if not Engine.is_editor_hint() and weapon == null:
+		weapon = WeaponConfig.autocannon() # a mount always carries a working weapon
+	_sync_weapon()
+
+
+## Copies the assigned weapon's cadence and muzzle speed onto the turret so the
+## fire gate and the fire-control lead solver read live values.
+func _sync_weapon() -> void:
+	if weapon == null:
+		return
+	fire_rate = weapon.fire_rate
+	projectile_speed = weapon.projectile_speed
 
 
 func _process(delta: float) -> void:
@@ -97,18 +122,34 @@ func _process(delta: float) -> void:
 
 ## Spawns a bolt at the barrel tip, launched along the current aim.
 func _fire() -> void:
-	if projectile_scene == null:
+	var scene := projectile_scene
+	if weapon != null and weapon.projectile_scene != null:
+		scene = weapon.projectile_scene
+	if scene == null:
 		return
 	var dir := Vector2.UP.rotated(global_rotation)
-	var projectile := projectile_scene.instantiate() as Node2D
+	var projectile := scene.instantiate() as Node2D
 	if projectile == null:
 		return
 	projectile.global_position = global_position + dir * barrel_length
 	projectile.rotation = global_rotation
+	if projectile is Projectile:
+		var bolt := projectile as Projectile
+		bolt.damage = weapon.damage if weapon != null else bolt.damage
+		if weapon != null:
+			bolt.color = weapon.projectile_color
+	if projectile is Missile and weapon != null:
+		var m := projectile as Missile
+		m.cruise_speed = weapon.projectile_speed
+		m.turn_rate = weapon.homing_turn_rate
 	if projectile.has_method("launch"):
 		# Muzzle velocity plus the platform's momentum (Newtonian, frictionless space).
 		projectile.launch(dir * projectile_speed + base_velocity)
 	projectile_fired.emit(projectile)
+	# Recoil kicks the ship opposite the muzzle; its RCS fights to null it.
+	var recoil := weapon.recoil() if weapon != null else 0.0
+	if recoil > 0.0:
+		recoil_applied.emit(-dir * recoil)
 
 
 func _draw() -> void:

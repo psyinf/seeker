@@ -34,12 +34,12 @@ signal destroyed(at: Vector2)
 ## Seconds the hit flash lasts.
 @export var flash_time: float = 0.08
 
-var _remaining: int = 0
+var _remaining: float = 0.0
 var _flash: float = 0.0
 
 
 func _ready() -> void:
-	_remaining = hit_points
+	_remaining = float(hit_points)
 	if not Engine.is_editor_hint():
 		# Match the shape to the drawn radius so hit detection lines up with visuals.
 		var shape := $CollisionShape2D as CollisionShape2D
@@ -47,12 +47,12 @@ func _ready() -> void:
 			(shape.shape as CircleShape2D).radius = radius
 
 
-## Called by a bolt on impact; flashes, decrements HP, and dies at zero.
-func hit() -> void:
+## Called by a bolt on impact; flashes, subtracts damage, and dies at zero.
+func hit(damage: float = 1.0) -> void:
 	_flash = flash_time
-	_remaining -= 1
+	_remaining -= damage
 	queue_redraw()
-	if _remaining <= 0:
+	if _remaining <= 0.0:
 		destroyed.emit(global_position)
 		queue_free()
 

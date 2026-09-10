@@ -150,6 +150,35 @@ surface of the cells it covers; a ship's heat balance is `heat produced −
 heat dissipated`, and going over budget applies penalties (reduced power,
 accuracy, or forced throttling) rather than an instant fail. Numbers TBD.
 
+### 4.5 Weapons — first pass
+
+Weapons are data-driven stat blocks (`WeaponConfig`) mounted on turrets. Two
+firing models exist, sharing the same properties (**speed, damage, recoil,
+cadence**):
+
+- **Projectile** — dumb bolts fired at a muzzle speed; they inherit the ship's
+  momentum (Newtonian). Recoil is real: `recoil = projectile speed × ammo mass`
+  (the round's momentum leaving the barrel).
+- **Guided** — missiles that soft-launch and home on the nearest target at a
+  limited turn rate. Negligible recoil.
+
+Ready-made presets:
+
+| Preset | Kind | Cadence | Speed | Damage | Recoil |
+|--------|------|---------|-------|--------|--------|
+| **Railgun** | Projectile | ~1/s | massive | massive | heavy |
+| **Autocannon** | Projectile | high | moderate | small | light |
+| **Missile** | Guided | slow | slow (homes) | heavy | none |
+
+**Recoil vs. RCS.** Each projectile shot kicks the ship opposite the muzzle. The
+RCS continuously fights to null the accumulated kick (`rcs_recoil_compensation`,
+px/s of delta-v per second). Firing within that budget is fully absorbed; heavy
+or many weapons firing at once **overwhelm** the RCS and the leftover kick shoves
+the ship — a real trade-off between firepower and station-keeping.
+
+_First pass:_ presets are cycled across a design's WEAPON cells (railgun →
+autocannon → missile) until the editor lets the player pick a weapon per cell.
+
 ## 5. World & setting
 
 

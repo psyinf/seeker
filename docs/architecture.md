@@ -166,30 +166,55 @@ For each: what it does, key scenes/scripts, and how it talks to other systems._
   (`class_name ShipTurret`, `@tool`), instanced as child(ren) of `Ship` and
   drawn **on top** of the hull. Each turret aims **independently at the mouse**
   in world space (barrel = local -Y), slews toward it at `slew_speed`, and gates
-  its own `fire_rate`. On fire it spawns its `projectile_scene` at the barrel
-  tip along its aim and emits `projectile_fired(projectile)`; it never adds the
-  bolt to the tree itself. Weapon params (`projectile_scene`, `fire_rate`,
-  `projectile_speed`) are per-turret exports, so different/multiple turrets are
-  just more `ShipTurret` nodes with different values — no code changes. Two
-  runtime fields let the ship/fire-control drive it: `base_velocity` (platform
-  momentum added to every bolt) and `aim_override` (a world aim direction that
-  supersedes mouse-tracking; `Vector2.ZERO` = aim at the cursor). Exposes
-  `muzzle_position()` for the fire-control geometry.
+  its own `fire_rate`. On fire it spawns its weapon's round at the barrel tip
+  along its aim and emits `projectile_fired(projectile)`; it never adds the bolt
+  to the tree itself. The turret carries a `WeaponConfig` (`weapon`); an assigned
+  config syncs its `fire_rate`/`projectile_speed` and supplies the round scene,
+  damage, color and recoil (falling back to the per-turret
+  `projectile_scene`/`fire_rate`/`projectile_speed` exports, defaulting to an
+  autocannon when unset). Different/multiple turrets are just more `ShipTurret`
+  nodes with different weapons — no code changes. Two runtime fields let the
+  ship/fire-control drive it: `base_velocity` (platform momentum added to every
+  bolt) and `aim_override` (a world aim direction that supersedes mouse-tracking;
+  `Vector2.ZERO` = aim at the cursor). Exposes `muzzle_position()` for the
+  fire-control geometry. On each projectile shot it emits `recoil_applied(impulse)`
+  (opposite the muzzle) for the ship to absorb.
+- **Weapons are data:** `res://scenes/ship/weapon_config.gd` (`class_name
+  WeaponConfig extends Resource`, `@tool`) — a weapon's stat block: `kind`
+  (`PROJECTILE`/`GUIDED`), `projectile_speed`, `damage`, `ammo_mass`,
+  `fire_rate` (cadence), `homing_turn_rate`, `projectile_color` and
+  `projectile_scene`. `recoil()` = `projectile_speed × ammo_mass` for
+  projectiles, 0 for guided. Static presets `railgun()` (slow cadence, huge speed
+  + damage, heavy recoil), `autocannon()` (fast cadence, small damage, light
+  recoil) and `missile()` (guided, homing, heavy warhead). `Ship._build_turrets`
+  cycles the three presets across a design's WEAPON cells (a first-pass stand-in
+  until the editor lets the player pick a weapon per cell).
 - **Firing (RMB):** `Ship._ready` collects every `ShipTurret` child and connects
-  their `projectile_fired`. **RMB** (in `_unhandled_input`) toggles `firing` on
-  all turrets via `_set_firing`; the ship relays each turret's shot up through
-  its own `projectile_fired`. `TacticalCombat` adds the bolt to the **world**
-  node (not the ship) so it flies free of the ship's transform. Each frame the
-  ship copies its `velocity` into every turret's `base_velocity`, so bolts
-  inherit the hull's momentum (Newtonian: a shot fired while moving drifts).
+  their `projectile_fired` and `recoil_applied`. **RMB** (in `_unhandled_input`)
+  toggles `firing` on all turrets via `_set_firing`; the ship relays each turret's
+  shot up through its own `projectile_fired`. `TacticalCombat` adds the bolt to
+  the **world** node (not the ship) so it flies free of the ship's transform. Each
+  frame the ship copies its `velocity` into every turret's `base_velocity`, so
+  bolts inherit the hull's momentum (Newtonian: a shot fired while moving drifts).
+- **Recoil vs. RCS:** each turret's `recoil_applied` feeds `Ship.apply_recoil`,
+  which adds the delta-v (`impulse / mass`) to `velocity` immediately and logs it
+  as `_recoil_debt`. `_compensate_recoil` (each physics frame) has the RCS cancel
+  up to `rcs_recoil_compensation` px/s of that debt, restoring velocity and firing
+  the translation thrusters (FX). Recoil arriving faster than the RCS can null
+  leaves a residual kick — heavy/many weapons overwhelm station-keeping.
 - **Projectile:** `res://scenes/ship/projectile.tscn` + `projectile.gd`
   (`class_name Projectile`) — a self-drawing bolt that travels at its `launch()`
   velocity in a straight line and `queue_free`s after `lifetime`. `launch()` is
   fed muzzle velocity **plus** the turret's `base_velocity`. Each physics frame it
-  **ray-sweeps** its step (`intersect_ray`, `collide_with_areas`, mask **4 =
-  targets**, bodies off) so fast bolts can't tunnel past a small target; on a hit
-  it calls `hit()` on the target and despawns. The ship has no physics body, so
-  bolts pass through it — only targets are struck.
+  calls the `_steer()` hook (no-op for dumb bolts) then **ray-sweeps** its step
+  (`intersect_ray`, `collide_with_areas`, mask **4 = targets**, bodies off) so
+  fast bolts can't tunnel past a small target; on a hit it calls `hit(damage)` on
+  the target and despawns. The ship has no physics body, so bolts pass through it.
+- **Missile (guided):** `res://scenes/ship/missile.tscn` + `missile.gd`
+  (`class_name Missile extends Projectile`) — overrides `_steer()` to home on the
+  nearest target (`intersect_shape` on the targets layer within `seek_radius`),
+  bending `_velocity` toward it at `turn_rate` while holding `cruise_speed`.
+  Reuses the base sweep/damage/despawn; the turret sets its speed/turn/damage.
 - **Fire control (module, no hardware):** `res://scenes/ship/fire_control.gd`
   (`class_name FireControl`, `@tool`), a child `Node2D` of `Ship` with
   `top_level = true` so its overlay draws in world space. `Ship._ready` grabs it

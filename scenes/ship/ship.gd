@@ -58,6 +58,12 @@ const TURRET_SCENE := preload("res://scenes/ship/ship_turret.tscn")
 ## Angular velocity damping per second (bleeds off residual spin).
 @export_range(0.0, 5.0, 0.05) var angular_damping: float = 0.5
 
+@export_group("Recoil")
+## How much weapon recoil the RCS can null per second, in px/s of delta-v. Recoil
+## arriving faster than this (heavy or many weapons firing at once) overwhelms the
+## thrusters and the leftover kick shoves the ship.
+@export var rcs_recoil_compensation: float = 150.0
+
 ## Current world-space velocity, in pixels/second. Read by the flight indicators.
 var velocity: Vector2 = Vector2.ZERO
 ## Unit vector the nose points toward (the desired heading). Read by the indicators.
@@ -106,6 +112,13 @@ var _braking: bool = false
 var _turrets: Array[ShipTurret] = []
 ## Optional fire-control computer; relays the selected module and platform data.
 var _fire_control: FireControl = null
+## Recoil delta-v the RCS still owes to cancel (accumulated shot kicks). Grows
+## when weapons fire faster than the RCS can compensate; the leftover pushes the ship.
+var _recoil_debt: Vector2 = Vector2.ZERO
+
+## Weapon presets cycled across a design's WEAPON cells so a built ship shows a
+## mix of the defined weapons until per-cell weapon choice exists in the editor.
+const WEAPON_PRESETS := [&"railgun", &"autocannon", &"missile"]
 
 
 func _ready() -> void:
@@ -115,6 +128,7 @@ func _ready() -> void:
 		if child is ShipTurret:
 			_turrets.append(child)
 			child.projectile_fired.connect(_on_turret_projectile_fired)
+			child.recoil_applied.connect(apply_recoil)
 		elif child is FireControl:
 			_fire_control = child
 	if _fire_control != null:
@@ -144,19 +158,34 @@ func _build_turrets(design: ShipDesign) -> void:
 		turret.queue_free()
 	_turrets.clear()
 	var cs := design.cell_size
+	var weapon_index := 0
 	for segment in design.segments:
 		if segment == null or segment.kind != ShipSegment.Kind.WEAPON:
 			continue
 		var turret := TURRET_SCENE.instantiate() as ShipTurret
 		if turret == null:
 			continue
+		turret.weapon = _make_weapon(WEAPON_PRESETS[weapon_index % WEAPON_PRESETS.size()])
+		weapon_index += 1
 		turret.position = Vector2(segment.cell) * cs
 		turret.rotation = segment.facing_dir().angle() + PI / 2.0
 		add_child(turret)
 		turret.projectile_fired.connect(_on_turret_projectile_fired)
+		turret.recoil_applied.connect(apply_recoil)
 		_turrets.append(turret)
 	if _fire_control != null:
 		_fire_control.setup(self, _turrets)
+
+
+## Builds one of the named weapon presets (see `WeaponConfig`).
+func _make_weapon(preset: StringName) -> WeaponConfig:
+	match preset:
+		&"railgun":
+			return WeaponConfig.railgun()
+		&"missile":
+			return WeaponConfig.missile()
+		_:
+			return WeaponConfig.autocannon()
 
 
 ## Assemble the propulsion layout from a design: a main plume off every venting
@@ -268,6 +297,7 @@ func _physics_process(delta: float) -> void:
 		_tap_thrust_time -= delta
 	elif _braking:
 		_apply_braking(delta)
+	_compensate_recoil(delta)
 	velocity = velocity.limit_length(max_speed)
 	position += velocity * delta
 	# Turrets inherit the hull's momentum so bolts fly Newtonian.
@@ -311,6 +341,29 @@ func _set_firing(active: bool) -> void:
 ## Relays a turret's bolt so the mode can place it in the world.
 func _on_turret_projectile_fired(projectile: Node2D) -> void:
 	projectile_fired.emit(projectile)
+
+
+## Applies a shot's recoil impulse: the kick lands on velocity immediately, and
+## the same delta-v is logged as debt the RCS then works to cancel.
+func apply_recoil(impulse: Vector2) -> void:
+	var delta_v := impulse / maxf(mass, 0.001)
+	velocity += delta_v
+	_recoil_debt += delta_v
+
+
+## RCS fights the accumulated recoil: each frame it cancels up to
+## rcs_recoil_compensation of the outstanding debt, restoring that much velocity.
+## While debt remains it fires the translation thrusters (FX). Debt that keeps
+## growing (recoil outpacing the RCS) leaves a residual kick on the ship.
+func _compensate_recoil(delta: float) -> void:
+	var debt := _recoil_debt.length()
+	if debt <= 0.0001:
+		return
+	var applied := minf(rcs_recoil_compensation * delta, debt)
+	var correction := -_recoil_debt / debt * applied
+	velocity += correction
+	_recoil_debt += correction
+	rcs_translation = correction.normalized().rotated(-rotation)
 
 
 ## Retro-burn opposite the current velocity, capped so it settles exactly at rest.
